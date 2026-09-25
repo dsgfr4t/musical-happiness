@@ -1,0 +1,115 @@
+/**
+ * packages/core/src/settings.ts
+ *
+ * Application-wide settings (config/settings.json). Contains no secrets.
+ * Stored with VersionedStore => automatic backup before every change.
+ */
+import * as path from 'node:path';
+import { VersionedStore } from './config';
+import { DataLayout } from './paths';
+import { DEFAULT_UPDATE_SETTINGS, UpdateSettings } from './updater';
+import type { LogMode } from './logger';
+
+export type DohProvider = 'quad9' | 'cloudflare' | 'mullvad' | 'custom';
+
+export const DOH_TEMPLATES: Record<Exclude<DohProvider, 'custom'>, string> = {
+  quad9: 'https://dns.quad9.net/dns-query',
+  cloudflare: 'https://cloudflare-dns.com/dns-query',
+  mullvad: 'https://dns.mullvad.net/dns-query',
+};
+
+export interface AppSettings {
+  schema: 1;
+  updates: UpdateSettings;
+  network: {
+    /** Consent for contacting an external service to show the public IP. Default OFF. */
+    publicIpLookup: boolean;
+    /** Refresh the traffic panel every 60 s. */
+    autoRefresh: boolean;
+    /** App-wide DNS (Chromium limitation: one resolver config per process). */
+    dns: { mode: 'system' | 'doh'; provider: DohProvider; customTemplate: string };
+  };
+  security: {
+    /** Lock encrypted profiles and the master-password keyring after N minutes idle (0 = never). */
+    autoLockMinutes: number;
+  };
+  logs: { mode: LogMode };
+  ui: {
+    verticalTabs: boolean;
+    /** Put background tabs to sleep after N minutes (0 = never). */
+    sleepTabsAfterMin: number;
+    showStartupSplash: boolean;
+  };
+  tor: {
+    /** Path to the official Tor Browser firefox.exe (auto-detected when empty). */
+    torBrowserPath: string;
+  };
+  offline: boolean;
+  filtersUpdatedAt?: string;
+}
+
+export function defaultSettings(): AppSettings {
+  return {
+    schema: 1,
+    updates: { ...DEFAULT_UPDATE_SETTINGS },
+    network: { publicIpLookup: false, autoRefresh: false, dns: { mode: 'system', provider: 'quad9', customTemplate: '' } },
+    security: { autoLockMinutes: 15 },
+    logs: { mode: 'standard' },
+    ui: { verticalTabs: false, sleepTabsAfterMin: 30, showStartupSplash: true },
+    tor: { torBrowserPath: '' },
+    offline: false,
+  };
+}
+
+function clampInt(v: unknown, min: number, max: number, dflt: number): number {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : dflt;
+}
+
+export function validateSettings(value: unknown): AppSettings {
+  const d = defaultSettings();
+  const v = (value ?? {}) as Partial<AppSettings>;
+  if (v.schema !== 1) throw new Error('Invalid settings schema');
+  const dns = { ...d.network.dns, ...(v.network?.dns ?? {}) };
+  if (!['system', 'doh'].includes(dns.mode)) dns.mode = 'system';
+  if (!['quad9', 'cloudflare', 'mullvad', 'custom'].includes(dns.provider)) dns.provider = 'quad9';
+  if (dns.customTemplate && !/^https:\/\/[^\s]+$/.test(dns.customTemplate)) dns.customTemplate = '';
+  return {
+    schema: 1,
+    updates: {
+      autoCheck: v.updates?.autoCheck ?? d.updates.autoCheck,
+      backgroundCheck: v.updates?.backgroundCheck ?? d.updates.backgroundCheck,
+      channel: v.updates?.channel === 'beta' ? 'beta' : 'stable',
+    },
+    network: {
+      publicIpLookup: !!(v.network?.publicIpLookup ?? d.network.publicIpLookup),
+      autoRefresh: !!(v.network?.autoRefresh ?? d.network.autoRefresh),
+      dns,
+    },
+    security: { autoLockMinutes: clampInt(v.security?.autoLockMinutes, 0, 24 * 60, d.security.autoLockMinutes) },
+    logs: { mode: v.logs?.mode === 'diagnostic' ? 'diagnostic' : 'standard' },
+    ui: {
+      verticalTabs: !!(v.ui?.verticalTabs ?? d.ui.verticalTabs),
+      sleepTabsAfterMin: clampInt(v.ui?.sleepTabsAfterMin, 0, 24 * 60, d.ui.sleepTabsAfterMin),
+      showStartupSplash: v.ui?.showStartupSplash ?? d.ui.showStartupSplash,
+    },
+    tor: { torBrowserPath: typeof v.tor?.torBrowserPath === 'string' ? v.tor.torBrowserPath : '' },
+    offline: !!v.offline,
+    filtersUpdatedAt: typeof v.filtersUpdatedAt === 'string' ? v.filtersUpdatedAt : undefined,
+  };
+}
+
+export function dohTemplate(s: AppSettings): string | null {
+  if (s.network.dns.mode !== 'doh') return null;
+  if (s.network.dns.provider === 'custom') return s.network.dns.customTemplate || null;
+  return DOH_TEMPLATES[s.network.dns.provider];
+}
+
+export function createSettingsStore(layout: DataLayout): VersionedStore<AppSettings> {
+  return new VersionedStore<AppSettings>(path.join(layout.config, 'settings.json'), {
+    backupDir: path.join(layout.backups, 'config'),
+    defaults: defaultSettings,
+    validate: validateSettings,
+    maxBackups: 30,
+  });
+}
