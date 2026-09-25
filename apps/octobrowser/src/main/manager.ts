@@ -18,7 +18,7 @@ import * as path from 'node:path';
 import {
   ADDONS, APPS, DICTS, DecryptionError, Profile, ProfileKind, ProfileManager, SUITE_VERSION, buildWsbConfig,
   describeIsolation, detectVpnAdapters, generateMnemonic, isValidMnemonic, wipe, fileStamp, SANDBOX_DATA_DIR, isLang, Lang,
-  checkConsistency, effectiveSettings, PROFILE_KINDS,
+  checkConsistency, effectiveSettings, PROFILE_KINDS, privateBrowsingPatch, privateBrowsingStamp,
 } from '@octo/core';
 import { AdblockService } from '@octo/shell/adblock';
 import { CHANNEL_FD, JsonLineChannel, channelStdio } from '@octo/shell/channel';
@@ -34,6 +34,13 @@ interface Child {
   proc: ChildProcess;
   channel: JsonLineChannel;
   ready: boolean;
+}
+
+/** Payload of `mgr:create`: name + kind, optionally a settings patch from the create dialog. */
+interface CreateInput {
+  name: string;
+  kind: ProfileKind;
+  patch?: Partial<Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'kind'>>;
 }
 
 export class Manager {
@@ -463,11 +470,27 @@ export class Manager {
     handle('mgr:profiles', L, () => this.profileList());
     handle('mgr:isolation', L, (_e, id: string) => this.isolation(id));
     handle('mgr:launch', L, (_e, id: string, opts: { passphrase?: string; forceRestricted?: boolean }) => this.launch(id, opts ?? {}));
-    handle('mgr:create', L, (_e, name: string, kind: ProfileKind) => {
-      if (!PROFILE_KINDS.includes(kind)) throw new Error('invalid kind');
-      const p = this.profiles.create({ name: String(name).slice(0, 64) || this.t(`profile.kind.${kind}`), kind });
+    handle('mgr:create', L, (_e, a: string | CreateInput, kind?: ProfileKind) => {
+      const input: CreateInput = typeof a === 'string' ? { name: a, kind: kind as ProfileKind } : a;
+      if (!PROFILE_KINDS.includes(input.kind)) throw new Error('invalid kind');
+      const p = this.profiles.create({
+        name: String(input.name ?? '').slice(0, 64) || this.t(`profile.kind.${input.kind}`),
+        kind: input.kind,
+        patch: input.patch,
+      });
       this.pushProfiles();
       return p;
+    });
+    // Private browsing: one throw-away temporary profile, started right away.
+    handle('mgr:private-browse', L, () => {
+      const p = this.profiles.create({
+        name: `${this.t('profile.privateName')} ${privateBrowsingStamp()}`,
+        kind: 'temporary',
+        patch: privateBrowsingPatch(),
+      });
+      this.pushProfiles();
+      this.ctx.logger.info('profile.private-started', { profile: p.id });
+      return this.launch(p.id, {});
     });
     handle('mgr:update', L, async (_e, id: string, patch: Partial<Profile> & { proxyUsername?: string; proxyPassword?: string; clearProxyCredentials?: boolean }) => {
       const { proxyUsername, proxyPassword, clearProxyCredentials, ...rest } = patch ?? {};

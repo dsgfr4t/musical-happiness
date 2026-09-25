@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   DataLayout, DecryptionError, ProfileKind, ProfileManager, ProfileData, RESTORED_ENTRY_FILE,
-  generateKey, generateMnemonic, isValidMnemonic, sanitizeProfile,
+  generateKey, generateMnemonic, isValidMnemonic, sanitizeProfile, privateBrowsingPatch, privateBrowsingStamp,
 } from '../src';
 import { FAST_KDF, tmpDir } from './helpers';
 
@@ -159,6 +159,36 @@ describe('ProfileManager', () => {
     expect(r.rejected.sort()).toEqual(bad.map(([d]) => d).sort());
     expect(pm.list().length).toBe(before);
     for (const [dir] of bad) expect(fs.existsSync(path.join(layout.profileDir(dir), `${RESTORED_ENTRY_FILE}.rejected`))).toBe(true);
+  });
+
+  it('private browsing is a throw-away temporary profile that keeps nothing', () => {
+    const { pm } = setup();
+    const p = pm.create({ name: `Prywatne ${privateBrowsingStamp(new Date(2026, 8, 25, 14, 3))}`, kind: 'temporary', patch: privateBrowsingPatch() });
+    expect(p.kind).toBe('temporary');
+    expect(p.name).toBe('Prywatne 2026-09-25 14:03');
+    expect(p.deleteOnClose).toBe(true);
+    expect(p.keepHistory).toBe(false);
+    expect(p.restoreSession).toBe(false);
+    expect(p.protection.level).toBe('strict');
+    expect(p.protection.overrides?.clearOnExit).toBe(true);
+    expect(p.protection.overrides?.blockThirdPartyCookies).toBe(true);
+    // Two private sessions differ only by name - never by randomised settings.
+    const q = pm.create({ name: 'Prywatne 2026-09-25 15:00', kind: 'temporary', patch: privateBrowsingPatch() });
+    expect({ ...q, id: '', name: '', createdAt: '', updatedAt: '' }).toEqual({ ...p, id: '', name: '', createdAt: '', updatedAt: '' });
+  });
+
+  it('accepts a settings patch from the create dialog', () => {
+    const { pm } = setup();
+    const p = pm.create({
+      name: 'Z patchiem', kind: 'custom',
+      patch: { protection: { level: 'strict', overrides: { canvas: 'block-readback' } }, keepHistory: false, deleteOnClose: true },
+    });
+    expect(p.name).toBe('Z patchiem');
+    expect(p.kind).toBe('custom');
+    expect(p.protection).toEqual({ level: 'strict', overrides: { canvas: 'block-readback' } });
+    expect(p.keepHistory).toBe(false);
+    expect(p.deleteOnClose).toBe(true);
+    expect(pm.get(p.id).network.mode).toBe('system'); // untouched defaults survive
   });
 
   it('does not duplicate a profile whose entry still exists', () => {

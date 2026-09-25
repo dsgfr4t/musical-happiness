@@ -1,5 +1,17 @@
 # Changelog / Historia zmian
 
+**PL – ekran startowy, przeglądanie prywatne i nowe okno tworzenia profilu**
+- **Pusty ekran startowy**: gdy nie ma żadnego profilu, widok Profile pokazuje na środku ikonę, krótki opis i dwa przyciski – **Przeglądanie prywatne** i **Nowy profil** – zamiast pustej siatki.
+- **Przeglądanie prywatne**: jeden klik tworzy tymczasowy profil w poziomie Ścisły i od razu go otwiera; historia, ciasteczka, pamięć podręczna i dane witryn są usuwane po zamknięciu, a profil znika z listy (`mgr:private-browse`, `privateBrowsingPatch()` w `packages/core/src/profiles.ts`). Komunikat wyraźnie mówi, że tryb prywatny nie zapewnia anonimowości w internecie.
+- **Nowe okno tworzenia profilu**: zakładki **Ogólne / Prywatność / Sieć / Piaskownica** po lewej i **podsumowanie na żywo** po prawej (nazwa, typ, poziom, tryb sieci, WebRTC, canvas, WebGL, informacje o sprzęcie, izolacja, historia, czyszczenie, usuwanie profilu). `mgr:create` przyjmuje teraz nazwę, typ i poprawkę ustawień; stary, dwuargumentowy sposób wywołania nadal działa.
+- **Nowe testy**: `ui-i18n.test.ts` (każda etykieta UI istnieje w PL i EN, także etykiety dynamiczne) oraz przypadki w `profiles.test.ts` dla przeglądania prywatnego i poprawki ustawień – łącznie 139 testów.
+
+**EN – empty start screen, private browsing and a new create-profile dialog**
+- **Empty start screen**: with no profiles the Profiles view shows a centred icon, a short explanation and two buttons - **Private browsing** and **New profile** - instead of an empty grid.
+- **Private browsing**: one click creates a temporary Strict profile and opens it; history, cookies, cache and site data are deleted on close and the profile disappears from the list (`mgr:private-browse`, `privateBrowsingPatch()` in `packages/core/src/profiles.ts`). The dialog states plainly that private browsing does not make you anonymous on the internet.
+- **New create-profile dialog**: tabs **General / Protection / Network / Isolation** on the left and a **live summary** on the right (name, type, level, network mode, WebRTC, canvas, WebGL, hardware info, isolation, history, cleanup, delete-on-close). `mgr:create` now accepts name, kind and a settings patch; the legacy two-argument call still works.
+- **New tests**: `ui-i18n.test.ts` (every UI label exists in PL and EN, dynamic ones included) plus private-browsing and create-patch cases in `profiles.test.ts` - 139 tests in total.
+
 ## 0.1.0 – wersja wstępna (niewydana)
 
 **PL – rozszerzenie ochrony klucza**

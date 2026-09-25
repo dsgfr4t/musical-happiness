@@ -11,7 +11,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { closeApp, dumpLogs, invoke, launchApp, listFiles, Launched, waitFor, windowWithPage } from './helpers';
 
-interface ProfileRow { id: string; name: string; kind: string; running: boolean; ready: boolean; encrypted: boolean }
+interface ProfileRow {
+  id: string; name: string; kind: string; running: boolean; ready: boolean; encrypted: boolean;
+  protection: { level: string; overrides?: Record<string, unknown> };
+  keepHistory: boolean; deleteOnClose: boolean;
+}
 
 let l: Launched;
 
@@ -55,6 +59,23 @@ test('trusted UI has no Node access and only its own IPC namespace', async () =>
     return !prefs || (prefs.sandbox !== false && prefs.nodeIntegration !== true && prefs.contextIsolation !== false);
   }));
   expect(sandboxed).toBe(true);
+});
+
+test('the create dialog payload (name + kind + settings patch) is honoured', async () => {
+  const win = await windowWithPage(l.app, 'launcher.html');
+  const created = await invoke<ProfileRow>(win, 'mgr:create', {
+    name: 'E2E z patchem', kind: 'custom',
+    patch: { protection: { level: 'strict', overrides: { canvas: 'block-readback' } }, keepHistory: false, deleteOnClose: true },
+  });
+  expect(created.name).toBe('E2E z patchem');
+  expect(created.protection.level).toBe('strict');
+  expect(created.protection.overrides?.canvas).toBe('block-readback');
+  expect(created.keepHistory).toBe(false);
+  expect(created.deleteOnClose).toBe(true);
+  // The legacy two-argument form still works (older callers / scripts).
+  const legacy = await invoke<ProfileRow>(win, 'mgr:create', 'E2E stary zapis', 'custom');
+  expect(legacy.name).toBe('E2E stary zapis');
+  expect(legacy.protection.level).toBe('standard');
 });
 
 test('a new profile starts in its own process', async () => {

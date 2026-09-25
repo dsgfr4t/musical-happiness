@@ -99,6 +99,29 @@ export interface Profile {
   homePage: string;
 }
 
+/**
+ * Settings of a private-browsing session: a temporary profile that keeps
+ * nothing and is deleted when its last window closes. It is the "temporary"
+ * kind with the privacy-relevant switches spelled out, so the promise made in
+ * the UI (no history, no cookies kept, no data left behind) is explicit and
+ * testable. Nothing here is randomised - every private session gets the same
+ * settings; only the name carries the start time.
+ */
+export function privateBrowsingPatch(): Partial<Omit<Profile, 'id' | 'createdAt' | 'updatedAt' | 'kind'>> {
+  return {
+    deleteOnClose: true,
+    keepHistory: false,
+    restoreSession: false,
+    protection: { level: 'strict', overrides: { clearOnExit: true, blockThirdPartyCookies: true, stripTrackingParams: true } },
+  };
+}
+
+/** Local "YYYY-MM-DD HH:MM" stamp for the private-browsing profile name. */
+export function privateBrowsingStamp(now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
 export interface ProfilesDoc {
   schema: 1;
   profiles: Profile[];

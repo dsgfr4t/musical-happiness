@@ -27,6 +27,22 @@ Akcje: **utwórz, edytuj, duplikuj** (opcjonalnie z danymi), **importuj, eksport
 
 Profile działają jako osobne procesy – można mieć otwarte kilka profili jednocześnie. Operacje na plikach profilu (reset, eksport, szyfrowanie) wymagają jego zamknięcia.
 
+### Pusty ekran startowy
+
+Gdy nie ma żadnego profilu (np. po usunięciu wszystkich), zamiast pustej listy na środku pojawia się ekran startowy z dwoma przyciskami: **Przeglądanie prywatne** i **Nowy profil**. Ten sam przycisk **Przeglądanie prywatne** znajduje się też na górze widoku Profile.
+
+### Przeglądanie prywatne
+
+Jednym kliknięciem tworzy tymczasowy profil w poziomie **Ścisły** i od razu go otwiera. Historia, ciasteczka, pamięć podręczna i dane witryn są usuwane po zamknięciu okna, a sam profil znika z listy. Nazwa profilu zawiera datę i godzinę startu, np. `Prywatne 2026-09-25 14:03`.
+
+Przeglądanie prywatne **nie** zapewnia anonimowości w internecie: adres IP pozostaje widoczny, a witryny i dostawca nadal widzą odwiedzone strony. Chroni ono dane przed innymi osobami korzystającymi z tego komputera.
+
+### Tworzenie profilu
+
+Okno **Nowy profil** ma zakładki (**Ogólne**, **Prywatność**, **Sieć**, **Piaskownica**) po lewej i **podsumowanie** po prawej. Podsumowanie pokazuje na żywo, co profil faktycznie będzie robił: nazwę, typ, poziom ochrony, tryb sieci, zasady WebRTC, odczyt canvas, WebGL, informacje o sprzęcie, izolację, historię, czyszczenie danych przy zamknięciu i usuwanie profilu. Nad zakładkami znajduje się informacja, że wszystkie parametry są stałe i opisowe – ta sama konfiguracja przy każdym uruchomieniu, bez losowania i bez podszywania się pod inny sprzęt.
+
+W zakładce **Sieć** można od razu ustawić proxy (reguły, lista wyjątków, nazwę użytkownika i hasło). Hasło trafia tylko do zaszyfrowanego magazynu sekretów – nigdy do zwykłego pliku JSON ani do logów.
+
 ## 3. Poziomy ochrony
 
 Wartości są **stałe dla profilu** – nic nie jest losowane przy uruchomieniu.

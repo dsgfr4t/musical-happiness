@@ -168,8 +168,26 @@ function renderProfiles(v: HTMLElement): void {
   imp.onclick = importDialog;
   const detect = h('button', { class: 'btn' }, icon('fingerprint', 15), ` ${t('privacy.runDetect')}`);
   detect.onclick = () => void run(api.invoke('mgr:launch-detect'));
-  head.append(h('div', { class: 'row' }, detect, imp, add));
+  const priv = h('button', { class: 'btn' }, icon('eyeOff', 15), ` ${t('profile.privateBrowsing')}`);
+  priv.title = t('profile.privateBrowsingHint');
+  priv.onclick = privateBrowsingDialog;
+  head.append(h('div', { class: 'row' }, detect, priv, imp, add));
   v.append(head);
+
+  // No profiles yet: a centred starting point instead of an empty grid.
+  if (!profiles.length) {
+    const create = h('button', { class: 'btn primary' }, icon('plus', 16), ` ${t('profile.new')}`);
+    create.onclick = newProfileDialog;
+    const quick = h('button', { class: 'btn' }, icon('eyeOff', 16), ` ${t('profile.privateBrowsing')}`);
+    quick.onclick = privateBrowsingDialog;
+    v.append(h('div', { class: 'empty' },
+      h('div', { class: 'empty-icon' }, icon('shield', 46)),
+      h('h2', { text: t('profiles.empty.title') }),
+      h('p', { class: 'muted', text: t('profiles.empty.text') }),
+      h('div', { class: 'row' }, quick, create),
+    ));
+    return;
+  }
 
   const grid = h('div', { class: 'cards' });
   for (const p of profiles) grid.append(profileCard(p));
@@ -209,19 +227,303 @@ function profileCard(p: Profile): HTMLElement {
   return card;
 }
 
+// ------------------------------------------------------ create profile
+
+/**
+ * Values of the two built-in presets, mirrored from packages/core/src/privacy.ts.
+ * The renderer bundle runs in the browser and cannot import the Node-only core
+ * package, so the live summary reads them from here - keep them in sync.
+ */
+const PRESET_VALUES: Record<'standard' | 'strict', Record<string, string>> = {
+  standard: { webrtc: 'default_public_interface_only', canvas: 'allow', webgl: 'allow', hardwareApis: 'allow' },
+  strict: { webrtc: 'disable_non_proxied_udp', canvas: 'block-readback', webgl: 'disabled', hardwareApis: 'normalize' },
+};
+
+/** Draft of the create dialog. Defaults mirror `defaultProfile(kind)` in core. */
+interface NpDraft {
+  name: string;
+  kind: Kind;
+  homePage: string;
+  level: 'standard' | 'strict' | 'tor';
+  overrides: Record<string, boolean | string>;
+  netMode: 'system' | 'direct' | 'proxy';
+  proxyRules: string;
+  proxyBypass: string;
+  proxyUser: string;
+  proxyPass: string;
+  dnsMode: 'inherit' | 'system' | 'doh';
+  sandboxMode: 'none' | 'restricted' | 'windows-sandbox';
+  clipboard: 'allow' | 'write-only' | 'block';
+  camera: boolean;
+  microphone: boolean;
+  externalDevices: boolean;
+  keepHistory: boolean;
+  restoreSession: boolean;
+  deleteOnClose: boolean;
+}
+
+function npDraft(kind: Kind): NpDraft {
+  return {
+    name: '',
+    kind,
+    homePage: '',
+    level: kind === 'tor' ? 'tor' : kind === 'private' || kind === 'temporary' ? 'strict' : 'standard',
+    overrides: {},
+    netMode: 'system',
+    proxyRules: '', proxyBypass: '', proxyUser: '', proxyPass: '',
+    dnsMode: 'inherit',
+    sandboxMode: kind === 'testing' || kind === 'private' ? 'restricted' : 'none',
+    clipboard: kind === 'private' || kind === 'temporary' ? 'write-only' : 'allow',
+    camera: kind === 'personal' || kind === 'work',
+    microphone: kind === 'personal' || kind === 'work',
+    externalDevices: false,
+    keepHistory: kind === 'personal' || kind === 'work',
+    restoreSession: kind === 'personal' || kind === 'work',
+    deleteOnClose: kind === 'temporary',
+  };
+}
+
+/** Effective value of a privacy setting: the user's override wins over the preset. */
+function npEffective(d: NpDraft, key: string): string {
+  const ov = d.overrides[key];
+  if (ov !== undefined) return typeof ov === 'boolean' ? (ov ? 'on' : 'off') : String(ov);
+  return PRESET_VALUES[d.level === 'strict' ? 'strict' : 'standard'][key] ?? '-';
+}
+
+/** The part of the draft that becomes the profile (sent to `mgr:create`). */
+function npPatch(d: NpDraft): Record<string, unknown> {
+  return {
+    name: d.name.trim(),
+    homePage: d.homePage || 'octo://newtab',
+    protection: { level: d.level, overrides: d.overrides },
+    network: { mode: d.netMode, proxyRules: d.proxyRules || undefined, proxyBypass: d.proxyBypass || undefined },
+    dns: { mode: d.dnsMode, dohTemplate: '' },
+    sandbox: {
+      mode: d.sandboxMode, clipboard: d.clipboard, camera: d.camera, microphone: d.microphone,
+      externalDevices: d.externalDevices,
+    },
+    keepHistory: d.keepHistory,
+    restoreSession: d.restoreSession,
+    deleteOnClose: d.deleteOnClose,
+  };
+}
+
+/** Live summary on the right of the dialog - what the profile will really do. */
+function npSummary(d: NpDraft): HTMLElement {
+  const row = (k: string, v: string) => h('div', { class: 'np-kv' }, h('span', { class: 'k', text: k }), h('span', { class: 'v', text: v }));
+  const onOff = (v: boolean) => t(v ? 'state.on' : 'state.off');
+  return h('div', { class: 'np-summary' },
+    h('div', { class: 'np-summary-head' }, icon('fingerprint', 16), h('b', { text: t('profile.summary') })),
+    h('div', { class: 'np-badge' }, icon('check', 13), h('span', { text: t('profile.stable') })),
+    row(t('profile.name'), d.name.trim() || t('profile.namePh')),
+    row(t('profile.kind'), t(`profile.kindTag.${d.kind}`)),
+    row(t('privacy.level'), t(`level.${d.level}`)),
+    row(t('net.modeLabel'), t(`net.mode.${d.netMode}`)),
+    row(t('ov.webrtc'), t(`webrtc.${npEffective(d, 'webrtc')}`)),
+    row(t('ov.canvas'), t(`canvas.${npEffective(d, 'canvas')}`)),
+    row(t('ov.webgl'), t(`webgl.${npEffective(d, 'webgl')}`)),
+    row(t('ov.hardwareApis'), t(`hardware.${npEffective(d, 'hardwareApis')}`)),
+    row(t('iso.mode'), t(`iso.mode.${d.sandboxMode}`)),
+    row(t('profile.keepHistory'), onOff(d.keepHistory)),
+    row(t('ov.clearOnExit'), onOff(npEffective(d, 'clearOnExit') === 'on')),
+    row(t('profile.deleteOnClose'), onOff(d.deleteOnClose)),
+    h('p', { class: 'hint', text: t('profile.stableHint') }),
+  );
+}
+
+/** One "preset / on / off" (or enum) row of the protection tab. */
+function npOverrideRow(d: NpDraft, o: { key: string; type: 'bool' | 'enum'; values?: string[] }, redraw: () => void): HTMLElement {
+  const ov = d.overrides;
+  const cur = ov[o.key];
+  const label = t(`ov.${o.key}`);
+  let ctl: HTMLSelectElement;
+  if (o.type === 'bool') {
+    ctl = select<string>(cur === undefined ? 'preset' : cur ? 'on' : 'off', [['preset', t('edit.preset')], ['on', t('state.on')], ['off', t('state.off')]], (v) => {
+      if (v === 'preset') delete ov[o.key]; else ov[o.key] = v === 'on';
+      redraw();
+    });
+  } else {
+    ctl = select<string>(cur === undefined ? 'preset' : String(cur), [['preset', t('edit.preset')], ...o.values!.map((x) => [x, t(`${o.key === 'hardwareApis' ? 'hardware' : o.key}.${x}`)] as [string, string])], (v) => {
+      if (v === 'preset') delete ov[o.key]; else ov[o.key] = v;
+      redraw();
+    });
+  }
+  return h('div', { class: 'ov-row' }, h('span', { text: label }), ctl);
+}
+
+const NP_OVERRIDES: Array<{ key: string; type: 'bool' | 'enum'; values?: string[] }> = [
+  { key: 'blockAds', type: 'bool' }, { key: 'blockTrackers', type: 'bool' }, { key: 'httpsOnly', type: 'bool' },
+  { key: 'blockThirdPartyCookies', type: 'bool' }, { key: 'stripTrackingParams', type: 'bool' },
+  { key: 'webrtc', type: 'enum', values: ['default', 'default_public_interface_only', 'disable_non_proxied_udp'] },
+  { key: 'canvas', type: 'enum', values: ['allow', 'block-readback'] },
+  { key: 'webgl', type: 'enum', values: ['allow', 'disabled'] },
+  { key: 'hardwareApis', type: 'enum', values: ['allow', 'normalize'] },
+  { key: 'clearOnExit', type: 'bool' }, { key: 'blockPopups', type: 'bool' }, { key: 'blockAutoplay', type: 'bool' },
+];
+
+function npGeneral(b: HTMLElement, d: NpDraft, kinds: Kind[], all: () => void, summary: () => void): void {
+  const name = h('input', { type: 'text', maxlength: '64', placeholder: t('profile.namePh') });
+  name.value = d.name;
+  name.oninput = () => { d.name = name.value; summary(); };
+  const kind = select<Kind>(d.kind, kinds.map((k) => [k, t(`profile.kind.${k}`)] as [Kind, string]), (v) => {
+    const keep = d.name;
+    Object.assign(d, npDraft(v), { name: keep });
+    all();
+  });
+  const desc = h('p', { class: 'hint', text: t(`profile.kindDesc.${d.kind}`) });
+  const home = h('input', { type: 'text', maxlength: '2048', placeholder: 'octo://newtab' });
+  home.value = d.homePage ?? '';
+  home.oninput = () => { d.homePage = home.value.trim(); summary(); };
+  b.append(
+    field('profile.name', name), field('profile.kind', kind), desc,
+    field('profile.homePage', home, 'profile.homePageHint'),
+    toggle(d.keepHistory, 'profile.keepHistory', (v) => { d.keepHistory = v; summary(); }),
+    toggle(d.restoreSession, 'profile.restoreSession', (v) => { d.restoreSession = v; summary(); }),
+    h('p', { class: 'hint', text: t('profile.historyNote') }),
+  );
+}
+
+function npProtection(b: HTMLElement, d: NpDraft, summary: () => void): void {
+  if (d.kind === 'tor') {
+    b.append(h('p', { class: 'info', text: t('edit.torFixed') }));
+    return;
+  }
+  const lvl = select<'standard' | 'strict'>(d.level === 'strict' ? 'strict' : 'standard', [['standard', t('level.standard')], ['strict', t('level.strict')]], (v) => {
+    d.level = v;
+    d.overrides = {};
+    summary();
+  });
+  b.append(field('privacy.level', lvl), h('p', { class: 'hint', text: t(`level.${d.level}.desc`) }));
+  const grid = h('div', { class: 'ov-grid' });
+  for (const o of NP_OVERRIDES) grid.append(npOverrideRow(d, o, summary));
+  b.append(h('h3', { text: t('edit.overrides') }), h('p', { class: 'hint', text: t('edit.overridesHint') }), grid);
+  b.append(h('p', { class: 'hint', text: t('privacy.consistentNote') }));
+}
+
+function npNetwork(b: HTMLElement, d: NpDraft, summary: () => void): void {
+  if (d.kind === 'tor') {
+    b.append(h('p', { class: 'info', text: t('net.torNotHere') }));
+    return;
+  }
+  const mode = select(d.netMode, [['system', t('net.mode.system')], ['direct', t('net.mode.direct')], ['proxy', t('net.mode.proxy')]], (v) => {
+    d.netMode = v;
+    summary();
+  });
+  b.append(field('net.modeLabel', mode));
+  if (d.netMode === 'proxy') {
+    const rules = h('input', { type: 'text', maxlength: '512', placeholder: 'socks5://127.0.0.1:9050' });
+    rules.value = d.proxyRules;
+    rules.oninput = () => { d.proxyRules = rules.value.trim(); summary(); };
+    const bypass = h('input', { type: 'text', maxlength: '512', placeholder: '<local>' });
+    bypass.value = d.proxyBypass;
+    bypass.oninput = () => { d.proxyBypass = bypass.value.trim(); };
+    const user = h('input', { type: 'text', maxlength: '256', autocomplete: 'off' });
+    user.value = d.proxyUser;
+    user.oninput = () => { d.proxyUser = user.value; };
+    const pass = h('input', { type: 'password', maxlength: '256', autocomplete: 'new-password' });
+    pass.oninput = () => { d.proxyPass = pass.value; };
+    b.append(
+      field('net.proxyRules', rules, 'net.proxyRulesHint'), field('net.proxyBypass', bypass),
+      field('net.proxyUser', user), field('net.proxyPass', pass, 'net.credsHint'),
+    );
+  }
+  const dns = select(d.dnsMode, [['inherit', t('dns.inherit')], ['system', t('dns.system')], ['doh', t('dns.doh')]], (v) => { d.dnsMode = v; summary(); });
+  b.append(field('dns.label', dns));
+  if (d.dnsMode === 'doh') {
+    const tpl = h('input', { type: 'text', maxlength: '512', placeholder: 'https://dns.quad9.net/dns-query' });
+    b.append(field('dns.template', tpl, 'dns.templateHint'));
+  }
+  b.append(h('p', { class: 'hint', text: t('net.vpnNote') }));
+}
+
+function npIsolation(b: HTMLElement, d: NpDraft, summary: () => void): void {
+  const mode = select(d.sandboxMode, [['none', t('iso.mode.none')], ['restricted', t('iso.mode.restricted')], ['windows-sandbox', t('iso.mode.windows-sandbox')]], (v) => {
+    d.sandboxMode = v;
+    summary();
+  });
+  const clip = select(d.clipboard, [['allow', t('iso.clipboard.allow')], ['write-only', t('iso.clipboard.write-only')], ['block', t('iso.clipboard.block')]], (v) => {
+    d.clipboard = v;
+    summary();
+  });
+  b.append(
+    field('iso.mode', mode, init.windowsSandbox ? 'sandbox.hint' : 'sandbox.hintNoWsb'),
+    field('iso.clipboard', clip),
+    toggle(d.camera, 'sandbox.camera', (v) => { d.camera = v; summary(); }),
+    toggle(d.microphone, 'sandbox.microphone', (v) => { d.microphone = v; summary(); }),
+    toggle(d.externalDevices, 'sandbox.devices', (v) => { d.externalDevices = v; summary(); }),
+    h('p', { class: 'hint', text: t('sandbox.appContainerNote') }),
+  );
+}
+
+/**
+ * Create dialog: tabs on the left, a live summary of what the profile will
+ * really do on the right. Values are descriptive and stable - the dialog never
+ * offers to spoof hardware, randomise a fingerprint or hide the browser.
+ */
 function newProfileDialog(): void {
+  const kinds = init.kinds.filter((k) => k !== 'tor' || !profiles.some((p) => p.kind === 'tor'));
+  const d = npDraft('custom');
+  let tab: 'general' | 'protection' | 'network' | 'isolation' = 'general';
   modal(t('profile.new'), (box) => {
-    const name = h('input', { type: 'text', maxlength: '64', placeholder: t('profile.namePh') });
-    const kinds = init.kinds.filter((k) => k !== 'tor' || !profiles.some((p) => p.kind === 'tor'));
-    const kind = select<Kind>('custom', kinds.map((k) => [k, t(`profile.kind.${k}`)]));
-    const desc = h('p', { class: 'hint', text: t('profile.kindDesc.custom') });
-    kind.onchange = () => { desc.textContent = t(`profile.kindDesc.${kind.value}`); };
-    const ok = h('button', { class: 'btn primary', text: t('common.create') });
-    ok.onclick = async () => {
-      const p = await run(api.invoke<Profile>('mgr:create', name.value.trim(), kind.value), 'toast.profileCreated');
-      if (p) closeModal();
+    const tabs = h('div', { class: 'tabs' });
+    const left = h('div', { class: 'np-left' });
+    const right = h('div', { class: 'np-right' });
+    const summary = () => { clear(right); right.append(npSummary(d)); };
+    const all = () => { draw(); summary(); };
+    const draw = () => {
+      clear(tabs);
+      const TABS: Array<['general' | 'protection' | 'network' | 'isolation', string]> = [
+        ['general', 'edit.tab.general'], ['protection', 'edit.tab.privacy'], ['network', 'edit.tab.network'], ['isolation', 'edit.tab.sandbox'],
+      ];
+      for (const [k, key] of TABS) {
+        const b = h('button', { class: k === tab ? 'on' : '', text: t(key) });
+        b.onclick = () => { tab = k; draw(); };
+        tabs.append(b);
+      }
+      clear(left);
+      if (tab === 'general') npGeneral(left, d, kinds, all, summary);
+      if (tab === 'protection') npProtection(left, d, summary);
+      if (tab === 'network') npNetwork(left, d, summary);
+      if (tab === 'isolation') npIsolation(left, d, summary);
     };
-    box.append(field('profile.name', name), field('profile.kind', kind), desc, h('div', { class: 'modal-actions' }, ok));
+    const cancel = h('button', { class: 'btn', text: t('common.cancel') });
+    cancel.onclick = closeModal;
+    const create = h('button', { class: 'btn primary' }, icon('check', 15), ` ${t('common.create')}`);
+    create.onclick = async () => {
+      const p = await run(api.invoke<Profile>('mgr:create', { name: d.name.trim() || t(`profile.kindTag.${d.kind}`), kind: d.kind, patch: npPatch(d) }));
+      if (!p) return;
+      if (d.proxyUser || d.proxyPass) await run(api.invoke('mgr:update', p.id, { proxyUsername: d.proxyUser, proxyPassword: d.proxyPass }));
+      closeModal();
+      toast(t('toast.profileCreated'), 'ok');
+    };
+    box.append(
+      h('p', { class: 'np-banner' }, icon('shieldCheck', 15), h('span', { text: t('profile.newBanner') })),
+      tabs, h('div', { class: 'np-body' }, left, right),
+      h('div', { class: 'np-actions' }, h('span', { class: 'grow' }), cancel, create),
+    );
+    draw();
+    summary();
+  }, true);
+  $('modalBox').classList.add('xwide');
+}
+
+/** Private browsing: one throw-away temporary profile, started right away. */
+function privateBrowsingDialog(): void {
+  modal(t('profile.privateTitle'), (box) => {
+    const cancel = h('button', { class: 'btn', text: t('common.cancel') });
+    cancel.onclick = closeModal;
+    const start = h('button', { class: 'btn primary' }, icon('eyeOff', 15), ` ${t('profile.privateStart')}`);
+    start.onclick = async () => {
+      const r = await run(api.invoke<{ status: string }>('mgr:private-browse'));
+      if (!r) return;
+      closeModal();
+      toast(t('profile.privateToast'), 'ok');
+    };
+    box.append(
+      h('p', { text: t('profile.privateBody') }),
+      h('p', { class: 'note small', text: t('profile.privateNote') }),
+      h('div', { class: 'modal-actions' }, cancel, start),
+    );
   });
 }
 
