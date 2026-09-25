@@ -12,6 +12,24 @@ import type { LogMode } from './logger';
 
 export type DohProvider = 'quad9' | 'cloudflare' | 'mullvad' | 'custom';
 
+/**
+ * Search engine used when the address bar gets words instead of a URL.
+ * All of them are privacy-respecting and none of them offers network suggestions.
+ */
+export type SearchEngine = 'duckduckgo' | 'startpage' | 'brave' | 'mojeek';
+
+export const SEARCH_ENGINES: Record<SearchEngine, string> = {
+  duckduckgo: 'https://duckduckgo.com/?q=',
+  startpage: 'https://www.startpage.com/sp/search?query=',
+  brave: 'https://search.brave.com/search?q=',
+  mojeek: 'https://www.mojeek.com/search?q=',
+};
+
+export function searchEngineQueryUrl(engine: SearchEngine, query: string): string {
+  const base = SEARCH_ENGINES[engine] ?? SEARCH_ENGINES.duckduckgo;
+  return `${base}${encodeURIComponent(query)}`;
+}
+
 export const DOH_TEMPLATES: Record<Exclude<DohProvider, 'custom'>, string> = {
   quad9: 'https://dns.quad9.net/dns-query',
   cloudflare: 'https://cloudflare-dns.com/dns-query',
@@ -28,6 +46,8 @@ export interface AppSettings {
     autoRefresh: boolean;
     /** App-wide DNS (Chromium limitation: one resolver config per process). */
     dns: { mode: 'system' | 'doh'; provider: DohProvider; customTemplate: string };
+    /** Search engine for words typed into the address bar. */
+    searchEngine: SearchEngine;
   };
   security: {
     /** Lock encrypted profiles and the master-password keyring after N minutes idle (0 = never). */
@@ -47,6 +67,10 @@ export interface AppSettings {
     showStartupSplash: boolean;
     /** Show a bookmark bar under the address bar. */
     showBookmarksBar: boolean;
+    /** Ask before a browser window closes (the session can then be saved). */
+    confirmOnQuit: boolean;
+    /** Open links from bookmarks / history in a background tab. */
+    openLinksInBackground: boolean;
   };
   tor: {
     /** Path to the official Tor Browser firefox.exe (auto-detected when empty). */
@@ -60,10 +84,10 @@ export function defaultSettings(): AppSettings {
   return {
     schema: 1,
     updates: { ...DEFAULT_UPDATE_SETTINGS },
-    network: { publicIpLookup: false, autoRefresh: false, dns: { mode: 'system', provider: 'quad9', customTemplate: '' } },
+    network: { publicIpLookup: false, autoRefresh: false, dns: { mode: 'system', provider: 'quad9', customTemplate: '' }, searchEngine: 'duckduckgo' },
     security: { autoLockMinutes: 15, secretStore: 'local' },
     logs: { mode: 'standard' },
-    ui: { verticalTabs: false, sleepTabsAfterMin: 30, showStartupSplash: true, showBookmarksBar: false },
+    ui: { verticalTabs: false, sleepTabsAfterMin: 30, showStartupSplash: true, showBookmarksBar: false, confirmOnQuit: true, openLinksInBackground: false },
     tor: { torBrowserPath: '' },
     offline: false,
   };
@@ -81,6 +105,9 @@ export function validateSettings(value: unknown): AppSettings {
   const dns = { ...d.network.dns, ...(v.network?.dns ?? {}) };
   if (!['system', 'doh'].includes(dns.mode)) dns.mode = 'system';
   if (!['quad9', 'cloudflare', 'mullvad', 'custom'].includes(dns.provider)) dns.provider = 'quad9';
+  const engine: SearchEngine = ['duckduckgo', 'startpage', 'brave', 'mojeek'].includes(v.network?.searchEngine as string)
+    ? (v.network!.searchEngine as SearchEngine)
+    : 'duckduckgo';
   if (dns.customTemplate && !/^https:\/\/[^\s]+$/.test(dns.customTemplate)) dns.customTemplate = '';
   return {
     schema: 1,
@@ -93,6 +120,7 @@ export function validateSettings(value: unknown): AppSettings {
       publicIpLookup: !!(v.network?.publicIpLookup ?? d.network.publicIpLookup),
       autoRefresh: !!(v.network?.autoRefresh ?? d.network.autoRefresh),
       dns,
+      searchEngine: engine,
     },
     security: {
       autoLockMinutes: clampInt(v.security?.autoLockMinutes, 0, 24 * 60, d.security.autoLockMinutes),
@@ -104,6 +132,8 @@ export function validateSettings(value: unknown): AppSettings {
       sleepTabsAfterMin: clampInt(v.ui?.sleepTabsAfterMin, 0, 24 * 60, d.ui.sleepTabsAfterMin),
       showStartupSplash: v.ui?.showStartupSplash ?? d.ui.showStartupSplash,
       showBookmarksBar: typeof v.ui?.showBookmarksBar === 'boolean' ? v.ui.showBookmarksBar : d.ui.showBookmarksBar,
+      confirmOnQuit: typeof v.ui?.confirmOnQuit === 'boolean' ? v.ui.confirmOnQuit : d.ui.confirmOnQuit,
+      openLinksInBackground: typeof v.ui?.openLinksInBackground === 'boolean' ? v.ui.openLinksInBackground : d.ui.openLinksInBackground,
     },
     tor: { torBrowserPath: typeof v.tor?.torBrowserPath === 'string' ? v.tor.torBrowserPath : '' },
     offline: !!v.offline,

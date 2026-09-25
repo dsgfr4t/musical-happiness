@@ -122,6 +122,9 @@ describe('renderer stylesheets', () => {
   });
 
   it('stays monochrome (no brand hues)', () => {
+    // The single documented exception: the destructive "force close (may lose data)"
+    // hint in the browser closing overlay, which the product owner asked to be red.
+    const ALLOWED = new Set(['#b91c1c']);
     const hues: string[] = [];
     for (const f of CSS_FILES) {
       const css = fs.readFileSync(f, 'utf8');
@@ -129,7 +132,9 @@ describe('renderer stylesheets', () => {
       css.split('\n').forEach((line, i) => {
         for (const m of line.matchAll(/#[0-9a-fA-F]{6}\b/g)) {
           const c = hex(m[0])!;
-          if (Math.max(...c) - Math.min(...c) > 30) hues.push(`${rel}:${i + 1} ${m[0]}  ${line.trim().slice(0, 70)}`);
+          if (Math.max(...c) - Math.min(...c) > 30 && !ALLOWED.has(m[0].toLowerCase())) {
+            hues.push(`${rel}:${i + 1} ${m[0]}  ${line.trim().slice(0, 70)}`);
+          }
         }
       });
     }

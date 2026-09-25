@@ -34,9 +34,9 @@ interface UpdateStatus {
 }
 interface Settings {
   updates: { autoCheck: boolean; backgroundCheck: boolean; channel: 'stable' | 'beta' };
-  network: { publicIpLookup: boolean; autoRefresh: boolean; dns: { mode: 'system' | 'doh'; provider: string; customTemplate: string } };
+  network: { publicIpLookup: boolean; autoRefresh: boolean; searchEngine: string; dns: { mode: 'system' | 'doh'; provider: string; customTemplate: string } };
   security: { autoLockMinutes: number; secretStore: 'local' | 'credman' }; logs: { mode: 'standard' | 'diagnostic' };
-  ui: { verticalTabs: boolean; sleepTabsAfterMin: number; showStartupSplash: boolean; showBookmarksBar: boolean }; tor: { torBrowserPath: string }; offline: boolean;
+  ui: { verticalTabs: boolean; sleepTabsAfterMin: number; showStartupSplash: boolean; showBookmarksBar: boolean; confirmOnQuit: boolean; openLinksInBackground: boolean }; tor: { torBrowserPath: string }; offline: boolean;
 }
 interface Init {
   lang: 'en' | 'pl'; dicts: Dicts; version: string; dataDir: string; addons: AddonInfo[]; kinds: Kind[];
@@ -107,8 +107,10 @@ function select<T extends string>(value: T, options: Array<[T, string]>, onChang
 
 function toggle(checked: boolean, labelKey: string, onChange?: (v: boolean) => void, disabled = false): HTMLElement {
   const inp = h('input', { type: 'checkbox', checked, disabled });
-  if (onChange) inp.onchange = () => onChange(inp.checked);
-  return h('label', { class: 'toggle' }, inp, h('span', { class: 'sw' }), h('span', { text: t(labelKey) }));
+  // The state is written out as text as well, so it never depends on the switch shape alone.
+  const state = h('span', { class: 'sw-state', text: t(checked ? 'state.on' : 'state.off') });
+  if (onChange) inp.onchange = () => { onChange(inp.checked); state.textContent = t(inp.checked ? 'state.on' : 'state.off'); };
+  return h('label', { class: 'toggle' }, inp, h('span', { class: 'sw' }), h('span', { text: t(labelKey) }), state);
 }
 
 // ------------------------------------------------------------------ layout
@@ -447,7 +449,7 @@ function npNetwork(b: HTMLElement, d: NpDraft, summary: () => void): void {
 }
 
 function npIsolation(b: HTMLElement, d: NpDraft, summary: () => void): void {
-  const mode = select(d.sandboxMode, [['none', t('iso.mode.none')], ['restricted', t('iso.mode.restricted')], ['windows-sandbox', t('iso.mode.windows-sandbox')]], (v) => {
+  const mode = select(d.sandboxMode, [['none', t('iso.mode.none')], ['restricted', t('iso.mode.restricted')], ['windows-sandbox', `${t('iso.mode.windows-sandbox')} (${t('sandbox.testVersion')})`]], (v) => {
     d.sandboxMode = v;
     summary();
   });
@@ -865,7 +867,7 @@ function editNetwork(b: HTMLElement, d: Profile, secrets: { proxyUsername: strin
 }
 
 function editSandbox(b: HTMLElement, d: Profile): void {
-  const mode = select(d.sandbox.mode, [['none', t('iso.mode.none')], ['restricted', t('iso.mode.restricted')], ['windows-sandbox', t('iso.mode.windows-sandbox')]], (v) => { d.sandbox.mode = v; });
+  const mode = select(d.sandbox.mode, [['none', t('iso.mode.none')], ['restricted', t('iso.mode.restricted')], ['windows-sandbox', `${t('iso.mode.windows-sandbox')} (${t('sandbox.testVersion')})`]], (v) => { d.sandbox.mode = v; });
   const clip = select(d.sandbox.clipboard, [['allow', t('iso.clipboard.allow')], ['write-only', t('iso.clipboard.write-only')], ['block', t('iso.clipboard.block')]], (v) => { d.sandbox.clipboard = v; });
   b.append(
     field('iso.mode', mode, init.windowsSandbox ? 'sandbox.hint' : 'sandbox.hintNoWsb'),
@@ -1055,6 +1057,7 @@ function renderSettings(v: HTMLElement): void {
     h('p', { class: 'hint', text: t('firstRun.ipLookupDesc') }),
     toggle(s.network.autoRefresh, 'net.autoRefresh', (val) => void saveSettings({ network: { autoRefresh: val } })),
     toggle(s.offline, 'settings.offline', (val) => void saveSettings({ offline: val })),
+    field('search.engine', select(s.network.searchEngine, [['duckduckgo', 'DuckDuckGo'], ['startpage', 'Startpage'], ['brave', 'Brave Search'], ['mojeek', 'Mojeek']], (val) => void saveSettings({ network: { searchEngine: val } })), 'search.engineHint'),
   ));
 
   const sleep = select(String(s.ui.sleepTabsAfterMin), [['0', t('sec.never')], ['15', '15 min'], ['30', '30 min'], ['60', '60 min'], ['120', '120 min']], (val) => void saveSettings({ ui: { sleepTabsAfterMin: Number(val) } }));
@@ -1062,6 +1065,8 @@ function renderSettings(v: HTMLElement): void {
     toggle(s.ui.verticalTabs, 'menu.verticalTabs', (val) => void saveSettings({ ui: { verticalTabs: val } })),
     field('settings.sleepTabs', sleep, 'settings.sleepTabsHint'),
     toggle(s.ui.showBookmarksBar, 'menu.showBookmarksBar', (val) => void saveSettings({ ui: { showBookmarksBar: val } })),
+    toggle(s.ui.confirmOnQuit, 'settings.confirmOnQuit', (val) => void saveSettings({ ui: { confirmOnQuit: val } }), false),
+    toggle(s.ui.openLinksInBackground, 'settings.openLinksInBackground', (val) => void saveSettings({ ui: { openLinksInBackground: val } })),
   ));
 
   const torPick = h('button', { class: 'btn', text: t('tor.pick') });

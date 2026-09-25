@@ -87,6 +87,8 @@ export class BrowserWindowController {
   private content: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private overlay = false;
   private fullscreenHtml = false;
+  /** Set once the user confirmed closing (the close event is intercepted first). */
+  private closeConfirmed = false;
   private closedStack: Array<{ url: string; title: string }> = [];
   private sleepTimer: NodeJS.Timeout;
 
@@ -131,6 +133,14 @@ export class BrowserWindowController {
       }
     });
 
+    // Closing is intercepted: the chrome shows a minimal "closing" overlay first,
+    // so the session, cookies and storage can be flushed instead of being cut.
+    this.win.on('close', (e) => {
+      if (this.closeConfirmed) return;
+      if (!rt.settings.load().ui.confirmOnQuit) return; // setting off: close straight away
+      e.preventDefault();
+      this.chrome.webContents.send('ui:close-request', { tabs: this.tabs.length, restoreSession: rt.profile.restoreSession && !rt.profile.deleteOnClose });
+    });
     this.win.on('resize', () => this.layoutViews());
     this.win.on('enter-full-screen', () => this.pushState());
     this.win.on('leave-full-screen', () => { this.fullscreenHtml = false; this.pushState(); this.layoutViews(); });
@@ -426,6 +436,13 @@ export class BrowserWindowController {
       t.blocked++;
       if (t.id === this.activeId && t.blocked % 5 === 1) this.pushTab(t);
     }
+  }
+
+  /** The chrome asked to close: let the runtime flush and save, then really close. */
+  confirmClose(force: boolean): void {
+    this.closeConfirmed = true;
+    if (force) this.rt.logger.info('window.force-closed', { tabs: this.tabs.length });
+    this.win.close();
   }
 
   snapshotTabs(): Array<{ url: string; title: string; pinned: boolean; group?: string }> {

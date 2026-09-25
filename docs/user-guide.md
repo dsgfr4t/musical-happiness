@@ -84,6 +84,15 @@ Każde ustawienie można nadpisać w edytorze profilu (zakładka Prywatność). 
 * plakietka profilu (kolor, typ, poziom ochrony, szyfrowanie, izolacja);
 * cienkie paski przewijania (10 px), które nie nachodzą na tekst – domyślny pasek Windows jest szerszy i rysowany jest nad treścią.
 
+### Zamykanie okna
+
+Zamykanie okna profilu nie ucina procesu od razu. Najpierw pojawia się małe, monochromatyczne okno **„Zamykanie…”** z obracającym się znacznikiem i informacją, co właśnie się dzieje:
+
+* profil z włączonym przywracaniem sesji – „Zapisywanie sesji i *n* kart, opróżnianie ciasteczek i danych profilu”;
+* profil tymczasowy / bez przywracania – „Zamykanie *n* kart. Ten profil nie zapisuje sesji – jego dane są usuwane”.
+
+Pod spodem są dwie możliwości: **Wymuś zamknięcie** z małym, czerwonym dopiskiem *(możliwa utrata danych)* oraz **Kontynuuj przeglądanie**, które zamyka tylko to okienko. Wymuszenie zamknięcia jest zapisywane w logu (`window.force-closed`). Zachowanie wyłącza się w Ustawieniach → Karty (**Pytaj przed zamknięciem okna**) – wtedy okno zamyka się od razu.
+
 ### Strona nowej karty
 
 Wbudowana strona `octo://newtab` jest monochromatyczna: jedno pole wyszukiwania, plakietka profilu i kafelki z aktualnym stanem (ochrona, publiczny IP, DNS, WebRTC, trasa, ruch, zablokowane elementy, izolacja, szyfrowanie, aktualizacje) oraz przycisk „Otwórz w Piaskownicy Windows”. Kafelki nie używają kolorów – znacznik ma inny kształt, a wartość jest wypisana słowiem. Na dole zawsze znajduje się zastrzeżenie, że nie gwarantujemy pełnej anonimowości.
@@ -98,11 +107,21 @@ Wbudowana strona `octo://newtab` jest monochromatyczna: jedno pole wyszukiwania,
 | **Wbudowane dodatki** | metadane (wersja, licencja, źródło, uprawnienia, integralność, status) |
 | **Pobrane / Zakładki / Historia / Aktualizacje / Skróty** | jak w nazwie |
 
+### Ustawienia, które warto znać
+
+W Ustawieniach → Karty i Sieć znajdują się przełączniki i listy, z których każdy pokazuje swój stan nie tylko kształtem:
+
+* **Przełączniki** mają biały wskaźnik na ciemnym torze (wyłączone) albo ciemny wskaźnik na białym torze (włączone) – oba stany są widoczne – obok etykiety jest dopisany tekst *Włączone / Wyłączone*;
+* **Pasek zakładek**, **Pytaj przed zamknięciem okna**, **Otwieraj linki z zakładek i historii w tle**, usypianie kart, karty pionowe;
+* **Wyszukiwarka w pasku adresu**: DuckDuckGo (domyślnie), Startpage, Brave Search, Mojeek – żadna z nich nie wysyła podpowiedzi sieciowych;
+* **Auto-blokada** (0–60 minut), tryb logów, kanał aktualizacji.
+
 ## 5. Piaskownica i tryb ograniczony
 
 Przed uruchomieniem profilu z izolacją pojawia się podsumowanie: tryb, kamera, mikrofon, urządzenia USB, schowek, udostępnione foldery, trasa sieci, VPN, brak uprawnień administratora.
 
-* **Windows Sandbox** – wymaga Windows Pro/Enterprise/Education i włączonej funkcji „Piaskownica systemu Windows”;
+* **Windows Sandbox** – oznaczona jako **wersja testowa**. Wymaga Windows Pro/Enterprise/Education i włączonej funkcji „Piaskownica systemu Windows”;
+* **VPN a Piaskarnica**: Piaskarnica systemu Windows to jednorazowa maszyna wirtualna z własnym przełącznikiem wirtualnym. Filtry niektórych klientów VPN – zwłaszcza funkcja „kill switch” – blokują w niej sieć, dlatego przy wykrytym VPN przed uruchomieniem pojawia się ostrzeżenie. Naprawa po stronie użytkownika: dodać Piaskownicę do wyjątków VPN (split tunnelling) albo uruchomić profil w trybie ograniczonym. Aplikacja nie wyłącza VPN-a sama – byłaby to zmiana konfiguracji systemu bez wiedzy użytkownika;
 * gdy niedostępna, używany jest **tryb ograniczony** (blokada kamery/mikrofonu/USB, schowek tylko do zapisu, pobieranie tylko do folderu profilu).
 
 ## 6. Sieć per profil

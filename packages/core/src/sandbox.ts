@@ -124,6 +124,14 @@ export function describeIsolation(p: Profile, env: { downloadsDir: string; windo
   else if (p.network.mode === 'system') route = 't:iso.route.system';
   items.push({ labelKey: 'iso.route', value: route, state: 'info' });
   items.push({ labelKey: 'iso.vpn', value: env.vpnDetected ? 't:iso.vpn.detected' : 't:iso.vpn.none', state: 'info' });
+  // Windows Sandbox is a disposable VM with its own virtual switch: VPN filters on the
+  // host (kill switch in particular) can block its network. Say so BEFORE launching.
+  if (inWsb && env.vpnDetected) {
+    items.push({ labelKey: 'iso.network', value: 't:sandbox.vpnWarning', state: 'info' });
+  }
+  if (inWsb) {
+    items.push({ labelKey: 'iso.status', value: 't:sandbox.testVersion', state: 'info' });
+  }
   items.push({ labelKey: 'iso.admin', value: 't:iso.admin.never', state: 'blocked' });
   return items;
 }

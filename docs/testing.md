@@ -17,7 +17,7 @@ npm run test:scripts   rem Pester: scripts\tests\octo.Tests.ps1 (wymaga PowerShe
 npm run check-fuses    rem weryfikacja fuse'ów Electrona w paczce (po npm run dist:dir)
 ```
 
-Stan obecny: 20 plików testowych, 142 testy jednostkowe (`npm test`).
+Stan obecny: 20 plików testowych, 144 testy jednostkowe (`npm test`).
 
 ## Mapowanie wymagań → testy
 
@@ -52,6 +52,8 @@ Stan obecny: 20 plików testowych, 142 testy jednostkowe (`npm test`).
 | Motyw okna profilu (ciemny szary / biały), wartość spoza listy odrzucona | `packages/core/test/profiles.test.ts` | `Profile.theme` przechodzi przez `sanitizeProfile`; profil bez motywu dostaje `dark` |
 | Przełącznik paska zakładek zawsze zwraca boolean | `packages/core/test/archive-settings.test.ts` | `ui.showBookmarksBar` – łańcuch znaków nie jest traktowany jako `true` |
 | Wynik audytu rośnie wraz z pogorszeniem konfiguracji | `packages/core/test/audit.test.ts` | zwykły Chromium > OctoBrowser Standard > OctoBrowser Ścisły; pasma ryzyka: wysoki ≥ 14, średni ≥ 5 |
+| Wyszukiwarka w pasku adresu: znana lista, nieznana wartość odrzucona | `packages/core/test/archive-settings.test.ts` | `searchEngineQueryUrl()` koduje zapytanie; „evil” wraca do DuckDuckGo |
+| Przełączniki UI zawsze zwracają boolean | `packages/core/test/archive-settings.test.ts` | `confirmOnQuit`, `openLinksInBackground`, `showBookmarksBar` – łańcuch znaków nie jest traktowany jako `true` |
 | Polskie znaki i spacje w ścieżce | `packages/core/test/helpers.ts` (`tmpDir`) – wszystkie testy plikowe | |
 | Ponowne uruchomienie komputera | test ręczny (auto-start, stan profili, kwarantanna klucza) | |
 | Odinstalowanie | `tools/ci/installer-e2e.ps1`, test ręczny | dane użytkownika zostają |

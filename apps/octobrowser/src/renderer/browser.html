@@ -8,6 +8,18 @@
   <link rel="stylesheet" href="browser.css">
 </head>
 <body>
+  <div id="closeveil" class="hidden" role="alertdialog" aria-modal="true" aria-labelledby="cvTitle">
+    <div class="cv-box">
+      <div class="cv-spin" aria-hidden="true"></div>
+      <b id="cvTitle">OctoBrowser.su</b>
+      <p id="cvBody"></p>
+      <div class="cv-actions">
+        <button id="cvForce" class="cv-force">Force close</button>
+        <span id="cvWarn" class="cv-warn"></span>
+      </div>
+      <button id="cvKeep" class="cv-keep">Continue</button>
+    </div>
+  </div>
   <div id="app">
     <header id="tabstrip" role="tablist" aria-label="Tabs">
       <div id="tabs"></div>

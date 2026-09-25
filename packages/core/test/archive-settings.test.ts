@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { defaultSettings, dohTemplate, isCachePath, packDir, unpackTo, validateSettings } from '../src';
+import { defaultSettings, dohTemplate, isCachePath, packDir, searchEngineQueryUrl, unpackTo, validateSettings } from '../src';
 
 function evilArchive(entryPath: string): Buffer {
   const header = Buffer.from(JSON.stringify([{ p: entryPath, s: 4 }]), 'utf8');
@@ -71,6 +71,24 @@ describe('settings validation', () => {
     expect(v.logs.mode).toBe('standard');
     expect(v.updates.channel).toBe('stable');
     expect(v.tor.torBrowserPath).toBe('');
+  });
+
+  it('picks a privacy-respecting search engine and never an unknown one', () => {
+    expect(defaultSettings().network.searchEngine).toBe('duckduckgo');
+    expect(searchEngineQueryUrl('duckduckgo', 'kot łaciński')).toBe('https://duckduckgo.com/?q=kot%20%C5%82aci%C5%84ski');
+    expect(searchEngineQueryUrl('brave', 'a b')).toBe('https://search.brave.com/search?q=a%20b');
+    expect(searchEngineQueryUrl('startpage', 'x')).toBe('https://www.startpage.com/sp/search?query=x');
+    expect(searchEngineQueryUrl('mojeek', 'x')).toBe('https://www.mojeek.com/search?q=x');
+    expect(validateSettings({ schema: 1, network: { searchEngine: 'evil' } }).network.searchEngine).toBe('duckduckgo');
+  });
+
+  it('asks before closing by default and keeps the switches booleans', () => {
+    const d = defaultSettings();
+    expect(d.ui.confirmOnQuit).toBe(true);
+    expect(d.ui.openLinksInBackground).toBe(false);
+    const v = validateSettings({ schema: 1, ui: { confirmOnQuit: 'no', openLinksInBackground: 1 } });
+    expect(v.ui.confirmOnQuit).toBe(true);
+    expect(v.ui.openLinksInBackground).toBe(false);
   });
 
   it('keeps the bookmark bar switch a boolean', () => {

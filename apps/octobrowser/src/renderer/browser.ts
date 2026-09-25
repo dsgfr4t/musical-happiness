@@ -32,7 +32,7 @@ interface UpdateStatus {
 }
 interface WinState {
   tabs: TabState[]; activeId: number; splitId: number; fullscreen: boolean; closedCount: number;
-  profile: ProfileInfo; protection: 'active' | 'attention'; verticalTabs: boolean; showBookmarksBar: boolean; offline: boolean; update: UpdateStatus | null;
+  profile: ProfileInfo; protection: 'active' | 'attention'; verticalTabs: boolean; showBookmarksBar: boolean; openLinksInBackground: boolean; offline: boolean; update: UpdateStatus | null;
 }
 interface AddonInfo {
   id: string; name: string; description: { en: string; pl: string }; version: string; license: string;
@@ -650,7 +650,7 @@ async function renderBookmarks(body: HTMLElement): Promise<void> {
   if (!list.length) body.append(h('p', { class: 'muted', text: t('bm.empty') }));
   for (const b of list) {
     const go = h('button', { class: 'linkish', text: b.title || b.url, title: b.url });
-    go.onclick = () => void api.invoke('ui:new-tab', b.url);
+    go.onclick = () => openLink(b.url);
     const del = h('button', { class: 'icon-btn tiny', title: t('common.delete') }, icon('trash', 13));
     del.onclick = () => void api.invoke('ui:bookmark-remove', b.id).then(() => openPanel('bookmarks', () => void renderBookmarks($('panelBody')), t('panel.bookmarks')));
     body.append(h('div', { class: 'kv' }, go, del));
@@ -666,7 +666,7 @@ async function renderHistory(body: HTMLElement, q: string): Promise<void> {
   if (state && !list.length) body.append(h('p', { class: 'muted', text: t('hist.emptyOrOff') }));
   for (const e of list) {
     const go = h('button', { class: 'linkish', text: e.title || e.url, title: e.url });
-    go.onclick = () => void api.invoke('ui:new-tab', e.url);
+    go.onclick = () => openLink(e.url);
     body.append(h('div', { class: 'kv' }, go, h('span', { class: 'small muted', text: new Date(e.visitedAt).toLocaleString() })));
   }
   const clr = h('button', { class: 'btn small danger', text: t('hist.clear') });
@@ -744,6 +744,27 @@ function applyTheme(theme: 'dark' | 'light' | undefined): void {
   document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
 }
 
+/** Minimal "closing" overlay shown instead of cutting the process short. */
+function showCloseVeil(info: { tabs: number; restoreSession: boolean }): void {
+  const veil = $('closeveil');
+  $('cvTitle').textContent = t('close.title');
+  $('cvBody').textContent = info.restoreSession
+    ? t('close.saving', { n: info.tabs })
+    : t('close.nosave', { n: info.tabs });
+  $('cvForce').textContent = t('close.force');
+  $('cvWarn').textContent = t('close.forceWarn');
+  $('cvKeep').textContent = t('close.keepOpen');
+  veil.classList.remove('hidden');
+  const force = $<HTMLButtonElement>('cvForce');
+  force.onclick = () => { force.disabled = true; void api.invoke('ui:close-ok', true); };
+  $('cvKeep').onclick = () => veil.classList.add('hidden');
+}
+
+/** Open a link from bookmarks / history, in the background when the setting says so. */
+function openLink(url: string): void {
+  void api.invoke('ui:new-tab', url, state?.openLinksInBackground === true);
+}
+
 /** Bookmark bar under the address bar (Settings > Tabs). */
 async function renderBookbar(): Promise<void> {
   const bar = $('bookbar');
@@ -757,7 +778,7 @@ async function renderBookbar(): Promise<void> {
   }
   for (const b of list.slice(0, 24)) {
     const btn = h('button', { class: 'bb', text: b.title || b.url, title: b.url });
-    btn.onclick = () => void api.invoke('ui:new-tab', b.url);
+    btn.onclick = () => openLink(b.url);
     bar.append(btn);
   }
   bar.append(h('button', { class: 'bb bb-more', text: '\u2026', title: t('panel.bookmarks') }));
@@ -787,6 +808,7 @@ function initEvents(): void {
   api.on<{ key: string; params?: Record<string, string> }>('ui:toast', (m) => toast(m.key, m.params));
   api.on<string>('ui:command', handleCommand);
   api.on('ui:focus-address', () => handleCommand('focus-address'));
+  api.on<{ tabs: number; restoreSession: boolean }>('ui:close-request', showCloseVeil);
   api.on<{ kind: string; origin: string; reqId: string }>('ui:permission', (q) => {
     pushBar({
       id: q.reqId, kind: 'ask', text: t('perm.ask', { origin: q.origin, what: t(`perm.${q.kind}`) }),

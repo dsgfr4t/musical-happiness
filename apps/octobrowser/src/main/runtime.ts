@@ -19,7 +19,7 @@ import { pathToFileURL } from 'node:url';
 import {
   ADDONS, AppSettings, Bookmark, DICTS, DataLayout, Lang, Logger, Profile, ProfileData, ProfileManager, SecretStore,
   VersionedStore, checkConsistency, createSettingsStore, detectVpnAdapters, dohTemplate, assessDns, parseTrace, t as translate,
-  SUITE_VERSION, wipe,
+  SUITE_VERSION, searchEngineQueryUrl, wipe,
 } from '@octo/core';
 import { AdblockService } from '@octo/shell/adblock';
 import { JsonLineChannel, Message, openChildChannel } from '@octo/shell/channel';
@@ -195,7 +195,7 @@ export class ProfileRuntime {
     if (s === 'about:blank') return s;
     if (/^(localhost|(\d{1,3}\.){3}\d{1,3}|\[[0-9a-f:]+\])(:\d+)?(\/.*)?$/i.test(s)) return `http://${s}`;
     if (!/\s/.test(s) && /^[^/?#]+\.[a-z]{2,}(:\d+)?([/?#].*)?$/i.test(s)) return `https://${s}`;
-    return `https://duckduckgo.com/?q=${encodeURIComponent(s)}`;
+    return searchEngineQueryUrl(this.settings.load().network.searchEngine, s);
   }
 
   recordHistory(url: string, title: string): void {
@@ -243,6 +243,8 @@ export class ProfileRuntime {
       protection: issues.some((i) => i.severity === 'warn') ? 'attention' : 'active',
       verticalTabs: set.ui.verticalTabs,
       showBookmarksBar: set.ui.showBookmarksBar,
+      confirmOnQuit: set.ui.confirmOnQuit,
+      openLinksInBackground: set.ui.openLinksInBackground,
       offline: set.offline,
       update: this.updateStatus,
     };
@@ -390,13 +392,15 @@ export class ProfileRuntime {
     // ---- trusted chrome UI ----
     handle('ui:init', L, () => ({ lang: this.lang, dicts: DICTS, version: SUITE_VERSION, shortcuts: SHORTCUT_HELP, addons: ADDONS, theme: this.profile.theme }));
     handle('ui:ready', L, (e) => { this.windowFor(e).pushState(); return true; });
+    /** The chrome overlay answered the close request: save & flush, then really close. */
+    handle('ui:close-ok', L, (e, force?: boolean) => { this.windowFor(e).confirmClose(force === true); return true; });
     handle('ui:layout', L, (e, rect: Rect, overlay: boolean) => {
       const r = { x: Math.max(0, Math.round(rect.x)), y: Math.max(0, Math.round(rect.y)), width: Math.max(0, Math.round(rect.width)), height: Math.max(0, Math.round(rect.height)) };
       this.windowFor(e).setLayout(r, !!overlay);
       return true;
     });
     handle('ui:navigate', L, (e, input: string) => { this.windowFor(e).navigate(String(input).slice(0, 8192)); return true; });
-    handle('ui:new-tab', L, (e, url?: string) => this.windowFor(e).newTab(typeof url === 'string' && url ? url : this.profile.homePage));
+    handle('ui:new-tab', L, (e, url?: string, background?: boolean) => this.windowFor(e).newTab(typeof url === 'string' && url ? url : this.profile.homePage, { active: background !== true }));
     handle('ui:new-window', L, () => { this.openWindow(); return true; });
     handle('ui:tab', L, (e, id: number, action: string, arg?: unknown) => { this.windowFor(e).tabAction(Number(id), String(action), arg); return true; });
     handle('ui:command', L, (e, cmd: string) => { this.windowFor(e).command(cmd as never); return true; });

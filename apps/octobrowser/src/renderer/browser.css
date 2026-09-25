@@ -88,6 +88,21 @@ body.vertical #tabstrip #tabs { display: none; }
 :root[data-theme="light"] #omnibox:focus-within { border-color: var(--dim); box-shadow: 0 1px 6px #00000012; }
 :root[data-theme="light"] .icon-btn:hover { background: var(--panel2); }
 
+/* ---- closing overlay (minimal, monochrome; the only red is the destructive hint) ---- */
+#closeveil { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #000000b8; }
+#closeveil.hidden { display: none; }
+.cv-box { width: min(360px, 86vw); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; box-shadow: 0 18px 50px #00000055; }
+.cv-spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--text); animation: cv-spin .8s linear infinite; }
+@keyframes cv-spin { to { transform: rotate(360deg); } }
+.cv-box b { font-size: 15px; }
+.cv-box p { margin: 0; font-size: 12px; color: var(--muted); }
+.cv-actions { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.cv-force { font: inherit; font-size: 12px; color: var(--text); background: transparent; border: 1px solid var(--dim); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+.cv-force:hover { border-color: var(--text); }
+.cv-warn { font-size: 11px; color: #b91c1c; }
+:root[data-theme="light"] .cv-warn { color: #b91c1c; }
+.cv-keep { font: inherit; font-size: 11px; color: var(--muted); background: transparent; border: 0; cursor: pointer; text-decoration: underline; }
+
 /* ---- bookmark bar ---- */
 #bookbar { display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 8px; background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
 #bookbar.hidden { display: none; }
