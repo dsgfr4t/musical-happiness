@@ -17,7 +17,7 @@ npm run test:scripts   rem Pester: scripts\tests\octo.Tests.ps1 (wymaga PowerShe
 npm run check-fuses    rem weryfikacja fuse'ów Electrona w paczce (po npm run dist:dir)
 ```
 
-Stan obecny: 21 plików testowych, 139 testów jednostkowych (`npm test`).
+Stan obecny: 20 plików testowych, 142 testy jednostkowe (`npm test`).
 
 ## Mapowanie wymagań → testy
 
@@ -49,6 +49,9 @@ Stan obecny: 21 plików testowych, 139 testów jednostkowych (`npm test`).
 | Etykiety UI istnieją w obu językach (PL/EN) | `packages/shell/test/ui-i18n.test.ts` | sprawdza klucze literałe i dynamiczne (`level.*`, `profile.kindTag.*`, `webrtc.*`, …); brak klucza = widoczny surowy klucz zamiast tekstu |
 | Przeglądanie prywatne: profil tymczasowy nic nie zachowuje | `packages/core/test/profiles.test.ts` | `privateBrowsingPatch()` – Ścisły, `clearOnExit`, `deleteOnClose`; dwie sesje różnią się tylko nazwą |
 | Tworzenie profilu z poprawką ustawień (mgr:create) | `packages/core/test/profiles.test.ts` | poprawka przechodzi przez `sanitizeProfile`, nietknięte domyślne wartości zostają |
+| Motyw okna profilu (ciemny szary / biały), wartość spoza listy odrzucona | `packages/core/test/profiles.test.ts` | `Profile.theme` przechodzi przez `sanitizeProfile`; profil bez motywu dostaje `dark` |
+| Przełącznik paska zakładek zawsze zwraca boolean | `packages/core/test/archive-settings.test.ts` | `ui.showBookmarksBar` – łańcuch znaków nie jest traktowany jako `true` |
+| Wynik audytu rośnie wraz z pogorszeniem konfiguracji | `packages/core/test/audit.test.ts` | zwykły Chromium > OctoBrowser Standard > OctoBrowser Ścisły; pasma ryzyka: wysoki ≥ 14, średni ≥ 5 |
 | Polskie znaki i spacje w ścieżce | `packages/core/test/helpers.ts` (`tmpDir`) – wszystkie testy plikowe | |
 | Ponowne uruchomienie komputera | test ręczny (auto-start, stan profili, kwarantanna klucza) | |
 | Odinstalowanie | `tools/ci/installer-e2e.ps1`, test ręczny | dane użytkownika zostają |

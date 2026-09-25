@@ -238,9 +238,11 @@ export class ProfileRuntime {
         id: this.profile.id, name: this.profile.name, kind: this.profile.kind, color: this.profile.color,
         level: this.profile.protection.level, encrypted: this.profile.encrypted, sandbox: this.profile.sandbox.mode,
         network: this.profile.network.mode, deleteOnClose: this.profile.deleteOnClose, audio: this.profile.audio, addons: this.profile.addons,
+        theme: this.profile.theme,
       },
       protection: issues.some((i) => i.severity === 'warn') ? 'attention' : 'active',
       verticalTabs: set.ui.verticalTabs,
+      showBookmarksBar: set.ui.showBookmarksBar,
       offline: set.offline,
       update: this.updateStatus,
     };
@@ -386,7 +388,7 @@ export class ProfileRuntime {
     internal('internal:sandbox', () => { this.channel.send({ t: 'launch-sandbox', id: this.profile.id }); return true; });
 
     // ---- trusted chrome UI ----
-    handle('ui:init', L, () => ({ lang: this.lang, dicts: DICTS, version: SUITE_VERSION, shortcuts: SHORTCUT_HELP, addons: ADDONS }));
+    handle('ui:init', L, () => ({ lang: this.lang, dicts: DICTS, version: SUITE_VERSION, shortcuts: SHORTCUT_HELP, addons: ADDONS, theme: this.profile.theme }));
     handle('ui:ready', L, (e) => { this.windowFor(e).pushState(); return true; });
     handle('ui:layout', L, (e, rect: Rect, overlay: boolean) => {
       const r = { x: Math.max(0, Math.round(rect.x)), y: Math.max(0, Math.round(rect.y)), width: Math.max(0, Math.round(rect.width)), height: Math.max(0, Math.round(rect.height)) };
@@ -411,8 +413,14 @@ export class ProfileRuntime {
       profile: this.sharedState().profile,
       sandbox: this.profile.sandbox,
     }));
-    handle('ui:set-level', L, (_e, level: string) => {
+    handle('ui:set-level', L, async (_e, level: string) => {
       if (this.profile.kind === 'tor' || !['standard', 'strict'].includes(level)) throw new Error('invalid level');
+      // Apply locally FIRST: the renderer re-opens the panel as soon as this
+      // call resolves, so waiting for the manager round-trip would show the
+      // previous level's values ("Standard and Strict look the same").
+      this.profile = { ...this.profile, protection: { level: level as 'standard' | 'strict' } };
+      await this.controller.update(this.profile);
+      this.pushAll();
       this.requestProfileUpdate({ protection: { level: level as 'standard' | 'strict' } });
       return true;
     });
@@ -455,7 +463,7 @@ export class ProfileRuntime {
     handle('ui:open-launcher', L, () => { this.openLauncher(); return true; });
     handle('ui:open-detect', L, () => { this.channel.send({ t: 'launch-detect' }); return true; });
     handle('ui:sandbox-relaunch', L, () => { this.channel.send({ t: 'launch-sandbox', id: this.profile.id }); return true; });
-    handle('ui:settings-set', L, (_e, patch: { verticalTabs?: boolean; autoRefresh?: boolean; offline?: boolean }) => {
+    handle('ui:settings-set', L, (_e, patch: { verticalTabs?: boolean; showBookmarksBar?: boolean; autoRefresh?: boolean; offline?: boolean }) => {
       this.channel.send({ t: 'update-settings', patch });
       return true;
     });

@@ -22,6 +22,7 @@ interface Profile {
   sandbox: { mode: 'none' | 'restricted' | 'windows-sandbox'; clipboard: 'allow' | 'write-only' | 'block'; camera: boolean; microphone: boolean; externalDevices: boolean; shareDownloads: boolean };
   audio: { muted: boolean; volume: number; outputDeviceId: string };
   addons: string[]; encrypted: boolean; deleteOnClose: boolean; keepHistory: boolean; restoreSession: boolean; homePage: string;
+  theme: 'dark' | 'light';
   // runtime info from the manager
   running: boolean; sealed: boolean; hasVault: boolean; needsResealing: boolean; issues: Array<{ key: string; severity: string }>; hasProxyCredentials: boolean;
 }
@@ -35,7 +36,7 @@ interface Settings {
   updates: { autoCheck: boolean; backgroundCheck: boolean; channel: 'stable' | 'beta' };
   network: { publicIpLookup: boolean; autoRefresh: boolean; dns: { mode: 'system' | 'doh'; provider: string; customTemplate: string } };
   security: { autoLockMinutes: number; secretStore: 'local' | 'credman' }; logs: { mode: 'standard' | 'diagnostic' };
-  ui: { verticalTabs: boolean; sleepTabsAfterMin: number; showStartupSplash: boolean }; tor: { torBrowserPath: string }; offline: boolean;
+  ui: { verticalTabs: boolean; sleepTabsAfterMin: number; showStartupSplash: boolean; showBookmarksBar: boolean }; tor: { torBrowserPath: string }; offline: boolean;
 }
 interface Init {
   lang: 'en' | 'pl'; dicts: Dicts; version: string; dataDir: string; addons: AddonInfo[]; kinds: Kind[];
@@ -253,6 +254,7 @@ interface NpDraft {
   proxyPass: string;
   dnsMode: 'inherit' | 'system' | 'doh';
   sandboxMode: 'none' | 'restricted' | 'windows-sandbox';
+  theme: 'dark' | 'light';
   clipboard: 'allow' | 'write-only' | 'block';
   camera: boolean;
   microphone: boolean;
@@ -273,6 +275,7 @@ function npDraft(kind: Kind): NpDraft {
     proxyRules: '', proxyBypass: '', proxyUser: '', proxyPass: '',
     dnsMode: 'inherit',
     sandboxMode: kind === 'testing' || kind === 'private' ? 'restricted' : 'none',
+    theme: 'dark',
     clipboard: kind === 'private' || kind === 'temporary' ? 'write-only' : 'allow',
     camera: kind === 'personal' || kind === 'work',
     microphone: kind === 'personal' || kind === 'work',
@@ -305,6 +308,7 @@ function npPatch(d: NpDraft): Record<string, unknown> {
     keepHistory: d.keepHistory,
     restoreSession: d.restoreSession,
     deleteOnClose: d.deleteOnClose,
+    theme: d.theme,
   };
 }
 
@@ -319,6 +323,7 @@ function npSummary(d: NpDraft): HTMLElement {
     row(t('profile.kind'), t(`profile.kindTag.${d.kind}`)),
     row(t('privacy.level'), t(`level.${d.level}`)),
     row(t('net.modeLabel'), t(`net.mode.${d.netMode}`)),
+    row(t('profile.theme'), t(`profile.theme.${d.theme}`)),
     row(t('ov.webrtc'), t(`webrtc.${npEffective(d, 'webrtc')}`)),
     row(t('ov.canvas'), t(`canvas.${npEffective(d, 'canvas')}`)),
     row(t('ov.webgl'), t(`webgl.${npEffective(d, 'webgl')}`)),
@@ -374,9 +379,14 @@ function npGeneral(b: HTMLElement, d: NpDraft, kinds: Kind[], all: () => void, s
   const home = h('input', { type: 'text', maxlength: '2048', placeholder: 'octo://newtab' });
   home.value = d.homePage ?? '';
   home.oninput = () => { d.homePage = home.value.trim(); summary(); };
+  const theme = select<'dark' | 'light'>(d.theme, [['dark', t('profile.theme.dark')], ['light', t('profile.theme.light')]], (v) => {
+    d.theme = v;
+    summary();
+  });
   b.append(
     field('profile.name', name), field('profile.kind', kind), desc,
     field('profile.homePage', home, 'profile.homePageHint'),
+    field('profile.theme', theme, 'profile.themeHint'),
     toggle(d.keepHistory, 'profile.keepHistory', (v) => { d.keepHistory = v; summary(); }),
     toggle(d.restoreSession, 'profile.restoreSession', (v) => { d.restoreSession = v; summary(); }),
     h('p', { class: 'hint', text: t('profile.historyNote') }),
@@ -774,8 +784,10 @@ function editGeneral(b: HTMLElement, d: Profile): void {
   color.oninput = () => { d.color = color.value; };
   const home = h('input', { type: 'text', value: d.homePage, maxlength: '2048' });
   home.oninput = () => { d.homePage = home.value.trim() || 'octo://newtab'; };
+  const theme = select<'dark' | 'light'>(d.theme === 'light' ? 'light' : 'dark', [['dark', t('profile.theme.dark')], ['light', t('profile.theme.light')]], (v) => { d.theme = v; });
   b.append(
     field('profile.name', name), field('profile.color', color), field('profile.homePage', home, 'profile.homePageHint'),
+    field('profile.theme', theme, 'profile.themeHint'),
     toggle(d.keepHistory, 'profile.keepHistory', (v) => { d.keepHistory = v; }),
     toggle(d.restoreSession, 'profile.restoreSession', (v) => { d.restoreSession = v; }),
     toggle(d.deleteOnClose || d.kind === 'temporary', 'profile.deleteOnClose', (v) => { d.deleteOnClose = v; }, d.kind === 'temporary'),
@@ -1016,9 +1028,20 @@ function renderSettings(v: HTMLElement): void {
   });
   const openData = h('button', { class: 'btn' }, icon('folder', 15), ` ${t('settings.openData')}`);
   openData.onclick = () => void api.invoke('mgr:open-folder', 'data');
+  const moveData = h('button', { class: 'btn' }, icon('folder', 15), ` ${t('settings.dataDirChange')}`);
+  moveData.onclick = async () => {
+    const picked = await run(api.invoke<string | null>('mgr:pick-folder'));
+    if (!picked) return;
+    const r = await run(api.invoke<{ ok: true; dataDir: string } | { ok: false; errorKey: string }>('mgr:move-data', picked, true));
+    if (!r) return;
+    if (!r.ok) { toast(t(r.errorKey), 'err'); return; }
+    confirmDialog(t('settings.dataDirMoved', { path: r.dataDir }), () => api.invoke('mgr:relaunch'), 'toast.saved');
+  };
   v.append(h('div', { class: 'panel' }, h('h2', { text: t('settings.general') }),
     field('settings.language', lang),
-    h('div', { class: 'field' }, h('span', { class: 'lbl', text: t('settings.dataDir') }), h('code', { text: init.dataDir }), openData, h('span', { class: 'hint', text: t('settings.dataDirHint') })),
+    h('div', { class: 'field' }, h('span', { class: 'lbl', text: t('settings.dataDir') }), h('code', { text: init.dataDir }), openData, moveData,
+      h('span', { class: 'hint', text: t('settings.dataDirHint') }),
+      h('span', { class: 'hint', text: t('settings.dataDirHint2') })),
     toggle(s.ui.showStartupSplash, 'settings.splash', (val) => void saveSettings({ ui: { showStartupSplash: val } })),
   ));
 
@@ -1038,6 +1061,7 @@ function renderSettings(v: HTMLElement): void {
   v.append(h('div', { class: 'panel' }, h('h2', { text: t('settings.tabs') }),
     toggle(s.ui.verticalTabs, 'menu.verticalTabs', (val) => void saveSettings({ ui: { verticalTabs: val } })),
     field('settings.sleepTabs', sleep, 'settings.sleepTabsHint'),
+    toggle(s.ui.showBookmarksBar, 'menu.showBookmarksBar', (val) => void saveSettings({ ui: { showBookmarksBar: val } })),
   ));
 
   const torPick = h('button', { class: 'btn', text: t('tor.pick') });

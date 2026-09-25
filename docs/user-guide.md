@@ -43,6 +43,12 @@ Okno **Nowy profil** ma zakładki (**Ogólne**, **Prywatność**, **Sieć**, **P
 
 W zakładce **Sieć** można od razu ustawić proxy (reguły, lista wyjątków, nazwę użytkownika i hasło). Hasło trafia tylko do zaszyfrowanego magazynu sekretów – nigdy do zwykłego pliku JSON ani do logów.
 
+### Motyw okna (ciemny szary / biały)
+
+W zakładce **Ogólne** (tworzenie profilu) i w oknie edycji profilu znajduje się wybór **Motyw okna**: *ciemny szary* (domyślnie) albo *biały*. Wybór jest zapisany w profilu i obowiązuje wszystkie jego okna: pasek kart, pasek narzędzi, panele i wbudowana strona nowej karty. Motyw **nie** zmienia treści ani wyglądu odwiedzanych stron – witryny dostają swoje własne kolory. W motywie białym karty są zaokrąglone, a pasek adresu jest jasny i mocno zaokrąglony, co przypomina nowoczesne minimalistyczne przeglądarki.
+
+Cały interfejs jest czarno-biały: nie ma kolorów „na ozdobę”. Stan (np. ochrona aktywna, wymagana uwaga) pokazuje kształt znacznika – pełne kółko, obwódka, pusty prostokąt – oraz słowo w etykiecie, więc nie zależy od rozróżniania barw.
+
 ## 3. Poziomy ochrony
 
 Wartości są **stałe dla profilu** – nic nie jest losowane przy uruchomieniu.
@@ -74,7 +80,13 @@ Każde ustawienie można nadpisać w edytorze profilu (zakładka Prywatność). 
 * pasek kart (poziomy lub pionowy), wyszukiwanie kart (Ctrl+E), przypinanie, grupy (etykieta), usypianie nieaktywnych kart;
 * **widok podzielony** (dwie karty obok siebie), **obraz w obrazie**;
 * pasek adresu z ikoną stanu połączenia, liczbą zablokowanych elementów, zakładkami;
-* plakietka profilu (kolor, typ, poziom ochrony, szyfrowanie, izolacja).
+* **pasek zakładek** – włącza się w menu (trzech kresek → *Pasek zakładek*) albo w Ustawieniach → Karty; pokazuje zakładki jako zwykłe przyciski;
+* plakietka profilu (kolor, typ, poziom ochrony, szyfrowanie, izolacja);
+* cienkie paski przewijania (10 px), które nie nachodzą na tekst – domyślny pasek Windows jest szerszy i rysowany jest nad treścią.
+
+### Strona nowej karty
+
+Wbudowana strona `octo://newtab` jest monochromatyczna: jedno pole wyszukiwania, plakietka profilu i kafelki z aktualnym stanem (ochrona, publiczny IP, DNS, WebRTC, trasa, ruch, zablokowane elementy, izolacja, szyfrowanie, aktualizacje) oraz przycisk „Otwórz w Piaskownicy Windows”. Kafelki nie używają kolorów – znacznik ma inny kształt, a wartość jest wypisana słowiem. Na dole zawsze znajduje się zastrzeżenie, że nie gwarantujemy pełnej anonimowości.
 
 ### Panele
 
@@ -133,6 +145,7 @@ Tryb: systemowy / bezpośredni / proxy (`http`, `https`, `socks4`, `socks5`), li
   * auto-blokada: po bezczynności zamykane są zaszyfrowane profile, a przy haśle głównym blokowany jest także lokalny klucz (aplikacja pyta o hasło ponownie);
   * listy filtrów i data ich ostatniej aktualizacji;
   * szczegóły: [encryption.md](encryption.md);
+* **Folder danych**: w Ustawieniach → Ogólne widoczna jest ścieżka. Przycisk **Zmień…** kopiuje profile, ustawienia, logi i kopie do nowego folderu, zapisuje go w pliku `bootstrap.json` i uruchamia aplikację ponownie. Kopiowanie jest wykonywane przed zapisem nowej ścieżki, więc przerwana operacja nie pozostawia aplikacji bez danych; stary folder zostaje bez zmian i można go usunąć ręcznie. Folder wewnątrz katalogu instalacji i w katalogach systemowych jest odrzucany;
 * **Kopie zapasowe**: tworzone automatycznie przed każdą zmianą konfiguracji; przywracanie jednym kliknięciem;
 * **Logi**: tryb standardowy/diagnostyczny, „Otwórz folder logów”, **„Usuń logi”**;
 * **O programie**: wersja, lista połączeń sieciowych, telemetria wyłączona, licencje.

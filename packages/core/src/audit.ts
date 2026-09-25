@@ -177,7 +177,14 @@ export function buildReport(p: ProbeData | null, env: EnvironmentData, now = new
 
   const score = findings.reduce((s, f) => s + f.points, 0) + consistency.length;
   const highEntropyExposed = findings.filter((f) => f.entropy === 'high' && f.status === 'exposed').length;
-  const risk: RiskLevel = score >= 8 ? 'high' : score >= 4 ? 'medium' : 'low';
+  // Bands are calibrated against a real, unprotected Chromium: it exposes
+  // canvas + WebGL + fonts + media devices and usually leaks DNS/WebRTC, which
+  // lands it in "high". The Standard level keeps canvas/WebGL readable (needed
+  // for compatibility) but blocks trackers, third-party cookies and upgrades
+  // HTTPS, which lands it in "medium"; Strict additionally blocks canvas
+  // read-back, WebGL and normalised hardware values, which lands it in "low".
+  // The points themselves are untouched - only the labels are calibrated.
+  const risk: RiskLevel = score >= 14 ? 'high' : score >= 5 ? 'medium' : 'low';
   const uniqueness = highEntropyExposed >= 3 ? 'likely-unique' : highEntropyExposed >= 1 ? 'possibly-unique' : 'likely-common';
 
   return {

@@ -41,6 +41,41 @@ describe('audit report', () => {
     expect(r.uniqueness).toBe('likely-unique');
   });
 
+  it('plain Chromium scores worse than OctoBrowser Standard, and Standard worse than Strict', () => {
+    // Plain Chromium: canvas + WebGL readable, real hardware, DNS + WebRTC leak.
+    const plain = baseProbe();
+    plain.canvas = { supported: true, readable: true, blank: false, hash: 'ffff' };
+    plain.webgl = { supported: true, vendor: 'Google Inc.', renderer: 'ANGLE', unmasked: true };
+    plain.webrtc.ips = ['192.168.1.20', '203.0.113.9'];
+    plain.mediaDevices.labelsVisible = true;
+    plain.fonts.detected = Array.from({ length: 40 }, (_, i) => `Font${i}`);
+    plain.audio = { supported: true, readable: true, hash: 'aaaa' };
+    plain.permissions = { geolocation: 'granted', camera: 'granted', microphone: 'prompt', notifications: 'granted' };
+    const plainReport = buildReport(plain, env({ publicIp: '198.51.100.1', publicIpConsent: true, dnsServers: ['192.168.1.1'], thirdPartyCookies: 'allowed' }));
+
+    // OctoBrowser Standard: the same fingerprint surfaces, but no leaks and
+    // trackers / third-party cookies / HTTPS-only are handled.
+    const standard = baseProbe();
+    standard.canvas = { supported: true, readable: true, blank: false, hash: 'ffff' };
+    standard.webgl = { supported: true, vendor: 'Google Inc.', renderer: 'ANGLE', unmasked: true };
+    standard.mediaDevices.labelsVisible = true;
+    const standardReport = buildReport(standard, env({ publicIp: '198.51.100.1', publicIpConsent: true, dnsServers: ['9.9.9.9'] }));
+
+    // OctoBrowser Strict: canvas read-back blocked, WebGL off, hardware normalised.
+    const strict = baseProbe();
+    strict.hardwareConcurrency = 4;
+    strict.mediaDevices = { supported: true, count: 0, labelsVisible: false };
+    const strictReport = buildReport(strict, env({ dnsServers: ['9.9.9.9'] }));
+
+    expect(plainReport.score).toBeGreaterThan(standardReport.score);
+    expect(standardReport.score).toBeGreaterThan(strictReport.score);
+    expect(plainReport.risk).toBe('high');
+    expect(standardReport.risk).toBe('medium');
+    expect(strictReport.risk).toBe('low');
+    expect(plainReport.uniqueness).toBe('likely-unique');
+    expect(strictReport.uniqueness).toBe('likely-common');
+  });
+
   it('no data => cannot be determined', () => {
     expect(buildReport(null, env()).risk).toBe('unknown');
   });

@@ -27,6 +27,7 @@ const CSS_FILES = [
   'packages/shell/renderer/splash.css',
   'apps/octobrowser/src/renderer/launcher.css',
   'apps/octobrowser/src/renderer/browser.css',
+  'apps/octobrowser/src/internal/internal.css',
   'apps/octodetect/src/renderer/detect.css',
 ].map((rel) => path.join(repoRoot, rel));
 

@@ -24,6 +24,7 @@ interface ProfileInfo {
   id: string; name: string; kind: string; color: string; level: 'standard' | 'strict' | 'tor'; encrypted: boolean;
   sandbox: 'none' | 'restricted' | 'windows-sandbox'; network: 'system' | 'direct' | 'proxy'; deleteOnClose: boolean;
   audio: { muted: boolean; volume: number; outputDeviceId: string }; addons: string[];
+  theme: 'dark' | 'light';
 }
 interface UpdateStatus {
   configured: boolean; current: string; latest: string | null; available: boolean; severity?: string;
@@ -31,7 +32,7 @@ interface UpdateStatus {
 }
 interface WinState {
   tabs: TabState[]; activeId: number; splitId: number; fullscreen: boolean; closedCount: number;
-  profile: ProfileInfo; protection: 'active' | 'attention'; verticalTabs: boolean; offline: boolean; update: UpdateStatus | null;
+  profile: ProfileInfo; protection: 'active' | 'attention'; verticalTabs: boolean; showBookmarksBar: boolean; offline: boolean; update: UpdateStatus | null;
 }
 interface AddonInfo {
   id: string; name: string; description: { en: string; pl: string }; version: string; license: string;
@@ -712,6 +713,7 @@ function renderMenu(body: HTMLElement): void {
   item('menu.split', 'split', () => void api.invoke('ui:command', 'split'));
   item('menu.pip', 'pip', () => void api.invoke('ui:command', 'pip'));
   item(state?.verticalTabs ? 'menu.horizontalTabs' : 'menu.verticalTabs', 'menu', () => void api.invoke('ui:settings-set', { verticalTabs: !state?.verticalTabs }));
+  item(state?.showBookmarksBar ? 'menu.hideBookmarksBar' : 'menu.showBookmarksBar', 'bookmark', () => void api.invoke('ui:settings-set', { showBookmarksBar: !state?.showBookmarksBar }));
   item('menu.zoomIn', 'plus', () => void api.invoke('ui:command', 'zoom-in'));
   item('menu.zoomOut', 'close', () => void api.invoke('ui:command', 'zoom-out'));
   item('menu.print', 'file', () => void api.invoke('ui:command', 'print'));
@@ -737,12 +739,40 @@ function handleCommand(cmd: string): void {
   }
 }
 
+/** The chrome colour scheme is a per-profile setting, never per launch. */
+function applyTheme(theme: 'dark' | 'light' | undefined): void {
+  document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+}
+
+/** Bookmark bar under the address bar (Settings > Tabs). */
+async function renderBookbar(): Promise<void> {
+  const bar = $('bookbar');
+  if (!state?.showBookmarksBar) { bar.classList.add('hidden'); clear(bar); return; }
+  bar.classList.remove('hidden');
+  const list = await api.invoke<Array<{ id: string; title: string; url: string }>>('ui:bookmarks');
+  clear(bar);
+  if (!list.length) {
+    bar.append(h('span', { class: 'bb-empty', text: t('bm.empty') }));
+    return;
+  }
+  for (const b of list.slice(0, 24)) {
+    const btn = h('button', { class: 'bb', text: b.title || b.url, title: b.url });
+    btn.onclick = () => void api.invoke('ui:new-tab', b.url);
+    bar.append(btn);
+  }
+  bar.append(h('button', { class: 'bb bb-more', text: '\u2026', title: t('panel.bookmarks') }));
+  const more = bar.lastElementChild as HTMLButtonElement;
+  more.onclick = () => openPanel('bookmarks');
+}
+
 function initEvents(): void {
   api.on<WinState>('ui:state', (s) => {
     state = s;
+    applyTheme(s.profile.theme as 'dark' | 'light' | undefined);
     renderTabs();
     renderAddress();
     renderStatus();
+    void renderBookbar();
     if (panel === 'audio' || panel === 'addons' || panel === 'updates') openPanel(panel, () => void renderPanel(panel!), t(`panel.${panel}`));
   });
   api.on<TabState>('ui:tab', (tab) => {
@@ -806,11 +836,12 @@ function initEvents(): void {
 // ------------------------------------------------------------------ boot
 
 async function boot(): Promise<void> {
-  const init = await api.invoke<{ lang: 'en' | 'pl'; dicts: Dicts; version: string; shortcuts: Array<[string, string]>; addons: AddonInfo[] }>('ui:init');
+  const init = await api.invoke<{ lang: 'en' | 'pl'; dicts: Dicts; version: string; shortcuts: Array<[string, string]>; addons: AddonInfo[]; theme: 'dark' | 'light' }>('ui:init');
   setDicts(init.dicts);
   setLang(init.lang);
   addons = init.addons;
   shortcuts = init.shortcuts;
+  applyTheme(init.theme);
   applyI18n();
   initToolbar();
   initFind();

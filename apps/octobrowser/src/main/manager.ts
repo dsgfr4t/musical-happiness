@@ -16,9 +16,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
-  ADDONS, APPS, DICTS, DecryptionError, Profile, ProfileKind, ProfileManager, SUITE_VERSION, buildWsbConfig,
+  ADDONS, APPS, BootstrapStore, DICTS, DecryptionError, Profile, ProfileKind, ProfileManager, SUITE_VERSION, buildWsbConfig,
   describeIsolation, detectVpnAdapters, generateMnemonic, isValidMnemonic, wipe, fileStamp, SANDBOX_DATA_DIR, isLang, Lang,
-  checkConsistency, effectiveSettings, PROFILE_KINDS, privateBrowsingPatch, privateBrowsingStamp,
+  checkConsistency, effectiveSettings, PROFILE_KINDS, privateBrowsingPatch, privateBrowsingStamp, validateBaseDir,
 } from '@octo/core';
 import { AdblockService } from '@octo/shell/adblock';
 import { CHANNEL_FD, JsonLineChannel, channelStdio } from '@octo/shell/channel';
@@ -29,6 +29,7 @@ import { UpdateManager } from '@octo/shell/update-manager';
 import { runMasterPasswordUnlock } from '@octo/shell/unlock';
 import { iconPath, THEME } from '@octo/shell/windows-ui';
 import { findTorBrowser, launchDetached, launchWindowsSandbox, windowsSandboxAvailable } from '@octo/shell/winutil';
+import { bootstrapFileFor } from '@octo/shell/prepare';
 
 interface Child {
   proc: ChildProcess;
@@ -618,6 +619,51 @@ export class Manager {
       const map = { data: ctx.layout.root, logs: ctx.layout.logs, backups: ctx.layout.backups, downloads: ctx.layout.profiles };
       void shell.openPath(map[which] ?? ctx.layout.root);
       return true;
+    });
+    handle('mgr:pick-folder', L, async (e) => {
+      const win = BrowserWindow.fromWebContents(e.sender);
+      const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'] });
+      return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+    });
+    /**
+     * Move the whole data folder to another base directory. The data is COPIED
+     * first (never moved out from under a running process), the bootstrap file
+     * is rewritten only after the copy succeeded, and the app relaunches so
+     * Chromium starts from the new location. The old folder is left untouched.
+     */
+    handle('mgr:move-data', L, async (_e, baseDir: string, copyData: boolean) => {
+      const check = validateBaseDir(String(baseDir ?? ''), ctx.prep.installDir);
+      if (!check.ok) return { ok: false as const, errorKey: check.errorKey };
+      const base = path.resolve(String(baseDir));
+      const dataDir = path.join(base, ctx.prep.info.dataSubdir);
+      if (path.resolve(dataDir).toLowerCase() === path.resolve(ctx.layout.root).toLowerCase()) {
+        return { ok: false as const, errorKey: 'settings.dataDirSame' };
+      }
+      if (copyData) {
+        if (!fs.existsSync(ctx.layout.root)) return { ok: false as const, errorKey: 'settings.dataDirMissing' };
+        try {
+          fs.cpSync(ctx.layout.root, dataDir, { recursive: true });
+        } catch {
+          return { ok: false as const, errorKey: 'settings.dataDirCopyFailed' };
+        }
+      } else {
+        try {
+          fs.mkdirSync(dataDir, { recursive: true });
+        } catch {
+          return { ok: false as const, errorKey: 'settings.dataDirCopyFailed' };
+        }
+      }
+      const store = new BootstrapStore(bootstrapFileFor(ctx.prep.info, ctx.prep.portable));
+      const cur = store.read();
+      store.write({
+        schema: 1,
+        language: cur?.language ?? ctx.lang,
+        baseDir: base,
+        dataDir,
+        firstRunAt: cur?.firstRunAt ?? new Date().toISOString(),
+      });
+      L.info('data.moved', { from: ctx.layout.root, to: dataDir, copied: !!copyData });
+      return { ok: true as const, dataDir };
     });
     handle('mgr:logs-clear', L, () => L.clear());
     handle('mgr:log-mode', L, (_e, mode: 'standard' | 'diagnostic') => {

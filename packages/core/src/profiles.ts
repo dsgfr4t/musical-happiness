@@ -97,6 +97,17 @@ export interface Profile {
   restoreSession: boolean;
   /** Home / start page. */
   homePage: string;
+  /** Window chrome colour scheme of this profile: dark grey or white. */
+  theme: ProfileTheme;
+}
+
+/** Chrome colour scheme of a profile window (no effect on rendered pages). */
+export type ProfileTheme = 'dark' | 'light';
+
+const THEMES: ProfileTheme[] = ['dark', 'light'];
+
+export function isProfileTheme(value: unknown): value is ProfileTheme {
+  return typeof value === 'string' && (THEMES as string[]).includes(value);
 }
 
 /**
@@ -169,6 +180,7 @@ export function defaultProfile(kind: ProfileKind, name: string): Profile {
     keepHistory: kind === 'personal' || kind === 'work',
     restoreSession: kind === 'personal' || kind === 'work',
     homePage: 'octo://newtab',
+    theme: 'dark',
   };
 }
 
@@ -203,10 +215,12 @@ export function sanitizeProfile(input: unknown): Profile {
     sandbox: { ...base.sandbox, ...(p.sandbox ?? {}) },
     audio: { ...base.audio, ...(p.audio ?? {}) },
     addons: Array.isArray(p.addons) ? p.addons.filter((a) => typeof a === 'string').slice(0, 32) : base.addons,
+    theme: isProfileTheme(p.theme) ? p.theme : base.theme,
   };
   out.audio.volume = Math.max(0, Math.min(100, Math.round(Number(out.audio.volume) || 0)));
   if (!['system', 'direct', 'proxy'].includes(out.network.mode)) out.network.mode = 'system';
   if (!['inherit', 'system', 'doh'].includes(out.dns.mode)) out.dns.mode = 'inherit';
+  if (!isProfileTheme(out.theme)) out.theme = base.theme;
   if (out.dns.dohTemplate && !/^https:\/\/[^\s]+$/.test(out.dns.dohTemplate)) out.dns.dohTemplate = '';
   if (out.dns.mode === 'doh' && !out.dns.dohTemplate) out.dns.mode = 'inherit';
   if (out.network.proxyRules && /[a-z]+:\/\/[^/\s]*:[^/\s]*@/i.test(out.network.proxyRules)) {

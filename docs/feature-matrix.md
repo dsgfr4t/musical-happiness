@@ -2,7 +2,7 @@
 
 Legenda: ✅ zaimplementowane · 🟡 częściowo / z ograniczeniami · ⏳ planowane · ⛔ celowo pominięte
 
-Stan weryfikacji: kod przechodzi `tsc` i 139 testów vitest, oba bundle budują się esbuild i ładują się w teście dymnym z atrapą Electrona. **Aplikacje nie zostały uruchomione w prawdziwym Electronie na Windows** w środowisku, w którym powstał ten kod (brak binarki Electron, PowerShell i Wine) – przed wydaniem wymagany jest test ręczny według checklisty w [updates-and-release.md](updates-and-release.md).
+Stan weryfikacji: kod przechodzi `tsc` i 142 testy vitest, oba bundle budują się esbuild i ładują się w teście dymnym z atrapą Electrona. **Aplikacje nie zostały uruchomione w prawdziwym Electronie na Windows** w środowisku, w którym powstał ten kod (brak binarki Electron, PowerShell i Wine) – przed wydaniem wymagany jest test ręczny według checklisty w [updates-and-release.md](updates-and-release.md).
 
 | # | Obszar | Stan | Uwagi |
 |---|---|---|---|
@@ -47,10 +47,15 @@ Stan weryfikacji: kod przechodzi `tsc` i 139 testów vitest, oba bundle budują 
 | — | Pusty ekran startowy zamiast pustej listy profili | ✅ | przyciski „Przeglądanie prywatne” i „Nowy profil” na środku |
 | — | Przeglądanie prywatne (profil tymczasowy, jeden klik) | ✅ | poziom Ścisły, dane usuwane po zamknięciu; bez obietnic anonimowości |
 | — | Tworzenie profilu: zakładki + podsumowanie na żywo | ✅ | `mgr:create` przyjmuje nazwę, typ i poprawkę ustawień; test `profiles.test.ts` |
+| — | Motyw okna profilu: ciemny szary / biały | ✅ | `Profile.theme`, wybór przy tworzeniu i w edycji; białe okno ma zaokrąglone karty i jasny pasek adresu; test `profiles.test.ts` |
+| — | Monochromatyczna strona nowej karty | ✅ | tylko szarości, stan pokazuje kształt znacznika i słowo; `internal.css` objęty testem kontrastu i monochromatu |
+| — | Pasek zakładek | ✅ | `ui.showBookmarksBar`, menu i Ustawienia → Karty; test waliacji ustawień |
+| — | Zmiana folderu danych z kopią i restartem | ✅ | `mgr:pick-folder` + `mgr:move-data`, kopia przed zapisem `bootstrap.json`, stary folder bez zmian |
+| — | Cienkie paski przewijania, nie nachodzące na tekst | ✅ | 10 px, `scrollbar-width: thin`, `background-clip: content-box` w każdym arkuszu renderera |
 | — | Dokumentacja: model zagrożeń, znane ograniczenia, szyfrowanie, testy, checklista wydania | ✅ | `docs/threat-model.md`, `docs/known-limitations.md`, `docs/encryption.md`, `docs/testing.md`, `docs/release-checklist.md` |
 | 18 | Telemetria wyłączona, dokumentacja połączeń | ✅ | [privacy-and-network.md](privacy-and-network.md) |
 | 19 | Logi standardowe/diagnostyczne, „Usuń logi” | ✅ | |
-| 20 | Testy jednostkowe | ✅ | 21 plików, 139 testów ([testing.md](testing.md)) |
+| 20 | Testy jednostkowe | ✅ | 20 plików, 142 testy ([testing.md](testing.md)) |
 | 20 | Testy E2E (Playwright + Electron) | ✅ | `e2e\*.spec.ts`, uruchamiane w CI na `windows-latest` (job „windows”) |
 | 20 | Weryfikacja fuse’ów Electrona w paczce | ✅ | `tools/check-fuses.mjs` po `npm run dist:dir` w CI |
 | 21 | Struktura katalogów | ✅ | [architecture.md](architecture.md) |

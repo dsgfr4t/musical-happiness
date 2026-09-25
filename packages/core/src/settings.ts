@@ -45,6 +45,8 @@ export interface AppSettings {
     /** Put background tabs to sleep after N minutes (0 = never). */
     sleepTabsAfterMin: number;
     showStartupSplash: boolean;
+    /** Show a bookmark bar under the address bar. */
+    showBookmarksBar: boolean;
   };
   tor: {
     /** Path to the official Tor Browser firefox.exe (auto-detected when empty). */
@@ -61,7 +63,7 @@ export function defaultSettings(): AppSettings {
     network: { publicIpLookup: false, autoRefresh: false, dns: { mode: 'system', provider: 'quad9', customTemplate: '' } },
     security: { autoLockMinutes: 15, secretStore: 'local' },
     logs: { mode: 'standard' },
-    ui: { verticalTabs: false, sleepTabsAfterMin: 30, showStartupSplash: true },
+    ui: { verticalTabs: false, sleepTabsAfterMin: 30, showStartupSplash: true, showBookmarksBar: false },
     tor: { torBrowserPath: '' },
     offline: false,
   };
@@ -101,6 +103,7 @@ export function validateSettings(value: unknown): AppSettings {
       verticalTabs: !!(v.ui?.verticalTabs ?? d.ui.verticalTabs),
       sleepTabsAfterMin: clampInt(v.ui?.sleepTabsAfterMin, 0, 24 * 60, d.ui.sleepTabsAfterMin),
       showStartupSplash: v.ui?.showStartupSplash ?? d.ui.showStartupSplash,
+      showBookmarksBar: typeof v.ui?.showBookmarksBar === 'boolean' ? v.ui.showBookmarksBar : d.ui.showBookmarksBar,
     },
     tor: { torBrowserPath: typeof v.tor?.torBrowserPath === 'string' ? v.tor.torBrowserPath : '' },
     offline: !!v.offline,

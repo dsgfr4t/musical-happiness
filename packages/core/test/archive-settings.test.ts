@@ -73,6 +73,12 @@ describe('settings validation', () => {
     expect(v.tor.torBrowserPath).toBe('');
   });
 
+  it('keeps the bookmark bar switch a boolean', () => {
+    expect(defaultSettings().ui.showBookmarksBar).toBe(false);
+    expect(validateSettings({ schema: 1, ui: { showBookmarksBar: 'yes' } }).ui.showBookmarksBar).toBe(false);
+    expect(validateSettings({ schema: 1, ui: { showBookmarksBar: true } }).ui.showBookmarksBar).toBe(true);
+  });
+
   it('rejects documents with a wrong schema', () => {
     expect(() => validateSettings({ schema: 2 })).toThrow();
     expect(() => validateSettings(null)).toThrow();

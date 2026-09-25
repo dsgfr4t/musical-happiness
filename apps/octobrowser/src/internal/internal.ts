@@ -15,7 +15,7 @@ interface OctoInternal {
   strings(): Promise<{ lang: 'en' | 'pl'; dict: Record<string, string> } | null>;
 }
 interface Status {
-  profile: { name: string; kind: string; color: string; level: string; encrypted: boolean; sandbox: string; network: string };
+  profile: { name: string; kind: string; color: string; level: string; encrypted: boolean; sandbox: string; network: string; theme: string };
   protection: 'active' | 'attention';
   traffic: {
     publicIp: string | null; consent: boolean; dns: { leak: string; doh: boolean }; webrtc: { status: string; policy: string };
@@ -48,8 +48,14 @@ function fmtBytes(n: number): string {
   return `${n.toFixed(i ? 1 : 0)} ${u[i]}`;
 }
 
+/**
+ * One status card. The tone only picks the shape of the leading dot - the label
+ * and the value text carry the meaning, so nothing depends on colour vision.
+ */
 function tile(label: string, value: string, state: 'ok' | 'warn' | 'bad' | 'muted' = 'muted'): HTMLElement {
-  return el('div', `tile ${state}`, undefined, el('span', 'tl', label), el('b', '', value));
+  const card = el('div', 'tile', undefined, el('span', 'tl', label, el('span', 'dot')), el('b', '', value));
+  card.dataset.tone = state;
+  return card;
 }
 
 async function newTab(api: OctoInternal, root: HTMLElement): Promise<void> {
@@ -69,6 +75,7 @@ async function newTab(api: OctoInternal, root: HTMLElement): Promise<void> {
   root.append(grid);
   const s = await api.status();
   if (!s) return;
+  document.documentElement.dataset.theme = s.profile.theme === 'light' ? 'light' : 'dark';
   document.documentElement.style.setProperty('--pc', s.profile.color);
   root.insertBefore(el('div', 'profile', undefined, el('span', 'dot'), el('span', '', `${s.profile.name} · ${t(`profile.kind.${s.profile.kind}`)} · ${t(`level.${s.profile.level}`)}`)), logo);
   const tr = s.traffic;

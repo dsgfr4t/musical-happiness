@@ -12,6 +12,26 @@
 - **New create-profile dialog**: tabs **General / Protection / Network / Isolation** on the left and a **live summary** on the right (name, type, level, network mode, WebRTC, canvas, WebGL, hardware info, isolation, history, cleanup, delete-on-close). `mgr:create` now accepts name, kind and a settings patch; the legacy two-argument call still works.
 - **New tests**: `ui-i18n.test.ts` (every UI label exists in PL and EN, dynamic ones included) plus private-browsing and create-patch cases in `profiles.test.ts` - 139 tests in total.
 
+**PL – monochromatyczny interfejs, motyw okna, pasek zakładek i zmiana folderu danych**
+- **Cienkie paski przewijania**: w każdym arkuszu interfejsu (menedżer, okno przeglądarki, strony wewnętrzne `octo://`, OctoDetect) pasek ma 10 px, `scrollbar-width: thin` i wewnętrzny margines (`background-clip: content-box`), więc nie nachodzi na tekst – wcześniej szeroki pasek Windowsa przykrywał treść paneli.
+- **Motyw okna profilu**: nowe pole `Profile.theme` (`dark` = ciemny szary, `light` = biały) wybierane przy tworzeniu profilu i w jego edycji. Motyw obowiązuje pasek kart, pasek narzędzi, panele i wbudowaną stronę nowej karty; w wariancie białym karty są zaokrąglone, a pasek adresu jasny i mocno zaokrąglony. Treść stron nie jest zmieniana.
+- **Monochromatyczna strona nowej karty**: usunięte gradienty i barwny akcent (`--accent`/`--accent2`). Stan kafelka (ochrona, DNS, WebRTC…) pokazuje kształt znacznika – pełne kółko, obwódka, pusty prostokąt – oraz słowo w wartości, więc nie zależy od rozróżniania kolorów.
+- **Panel prywatności reaguje od razu na zmianę poziomu**: `ui:set-level` stosuje najpierw nowe ustawienia lokalnie (jak to już robi `ui:audio`), więc panel nie pokazuje już wartości poprzedniego poziomu. Pełne działanie nowego poziomu – jak wcześniej – obejmuje nowe okna i karty.
+- **Pasma ryzyka w OctoDetect**: przeliczone progi (wysoki ≥ 14, średni ≥ 5). Punkty poszczególnych ustaleń nie zmieniły się – zmieniły się tylko progi, tak aby zwykły Chromium wypadał jako wysoki, OctoBrowser Standard jako średni, a OctoBrowser Ścisły jako niski. Nowy test pilnuje tej kolejności.
+- **Pasek zakładek**: nowe ustawienie `ui.showBookmarksBar` (menu okna albo Ustawienia → Karty) pokazuje zakładki jako zwykłe przyciski pod paskiem adresu.
+- **Zmiana folderu danych**: Ustawienia → Ogólne → **Zmień…** kopiuje profile, ustawienia, logi i kopie do nowego folderu, zapisuje go w `bootstrap.json` i uruchamia aplikację ponownie. Kopia jest wykonywana przed zapisem nowej ścieżki, stary folder zostaje bez zmian. Folder w katalogu instalacji i w katalogach systemowych jest odrzucany.
+- Testy: +4 przypadki (motyw profilu, przełącznik paska zakładek, kolejność wyników audytu) – łącznie 142.
+
+**EN – monochrome interface, window theme, bookmarks bar and data-folder move**
+- **Thin scrollbars**: every renderer stylesheet (launcher, browser window, internal `octo://` pages, OctoDetect) now uses a 10 px scrollbar with `scrollbar-width: thin` and an inner margin (`background-clip: content-box`), so it no longer covers the text - the wide Windows default scrollbar used to sit on top of panel content.
+- **Per-profile window theme**: new `Profile.theme` field (`dark` = dark grey, `light` = white), chosen when the profile is created and in the profile editor. It applies to the tab strip, toolbar, panels and the built-in new tab page; in the white variant tabs are pill-shaped and the address bar is light and strongly rounded. Page content is not changed.
+- **Monochrome new tab page**: gradients and the coloured accent (`--accent`/`--accent2`) are gone. A card's state (protection, DNS, WebRTC...) is shown by the shape of its marker - filled circle, ring, hollow square - plus the value written out in words, so nothing depends on colour vision.
+- **Privacy panel follows a level switch immediately**: `ui:set-level` now applies the new settings locally first (as `ui:audio` already did), so the panel no longer renders the previous level's values. A new level still only takes full effect in new windows and pages.
+- **OctoDetect risk bands recalibrated**: high ≥ 14, medium ≥ 5. Finding points are unchanged - only the thresholds moved, so a plain Chromium lands high, OctoBrowser Standard medium and OctoBrowser Strict low. A new test guards that ordering.
+- **Bookmarks bar**: new `ui.showBookmarksBar` setting (window menu or Settings → Tabs) shows bookmarks as plain buttons under the address bar.
+- **Data folder move**: Settings → General → **Change…** copies profiles, settings, logs and backups to the new folder, records it in `bootstrap.json` and restarts the app. The copy happens before the new path is written and the old folder is left untouched. Folders inside the install directory or system folders are refused.
+- Tests: +4 cases (profile theme, bookmarks-bar switch, audit score ordering) - 142 in total.
+
 ## 0.1.0 – wersja wstępna (niewydana)
 
 **PL – rozszerzenie ochrony klucza**

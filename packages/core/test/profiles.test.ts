@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   DataLayout, DecryptionError, ProfileKind, ProfileManager, ProfileData, RESTORED_ENTRY_FILE,
-  generateKey, generateMnemonic, isValidMnemonic, sanitizeProfile, privateBrowsingPatch, privateBrowsingStamp,
+  generateKey, generateMnemonic, isProfileTheme, isValidMnemonic, sanitizeProfile, privateBrowsingPatch, privateBrowsingStamp,
 } from '../src';
 import { FAST_KDF, tmpDir } from './helpers';
 
@@ -121,6 +121,17 @@ describe('ProfileManager', () => {
 
   it('sanitizeProfile rejects bad ids (path traversal)', () => {
     expect(() => sanitizeProfile({ id: '../x', kind: 'custom', name: 'x' })).toThrow();
+  });
+
+  it('every profile has a chrome theme, and only dark grey or white are accepted', () => {
+    const { pm } = setup();
+    for (const p of pm.list()) expect(['dark', 'light']).toContain(p.theme);
+    const p = pm.create({ name: 'Motyw', kind: 'custom', patch: { theme: 'light' } });
+    expect(pm.get(p.id).theme).toBe('light');
+    // An unknown value falls back to the default instead of breaking the UI.
+    const patched = pm.update(p.id, { theme: 'neon' as never });
+    expect(patched.theme).toBe('dark');
+    expect(isProfileTheme(patched.theme)).toBe(true);
   });
   it('adopts a profile entry restored by restore-profile.bat (entry deleted from the list)', () => {
     const { layout, pm } = setup();
