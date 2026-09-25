@@ -17,6 +17,8 @@ npm run test:scripts   rem Pester: scripts\tests\octo.Tests.ps1 (wymaga PowerShe
 npm run check-fuses    rem weryfikacja fuse'ów Electrona w paczce (po npm run dist:dir)
 ```
 
+Stan obecny: 18 plików testowych, 130 testów jednostkowych (`npm test`).
+
 ## Mapowanie wymagań → testy
 
 | Wymaganie (spec §20) | Gdzie | Uwagi |
@@ -39,6 +41,9 @@ npm run check-fuses    rem weryfikacja fuse'ów Electrona w paczce (po npm run d
 | Aktualizacja co 3. uruchomienie, ręczna, rollback | `packages/core/test/updater.test.ts`, `update-install.test.ts` | podpis Ed25519 + SHA-256 |
 | Uszkodzone pliki, nieudane pobieranie, przerwanie instalacji | `packages/core/test/release-verify.test.ts`, `update-install.test.ts`, `store.test.ts` | fail-closed |
 | Brak uprawnień administratora | `packages/shell/test/channel.test.ts`, test ręczny (`err.elevated`) | |
+| Start aplikacji: odczyt klucza DPAPI bez okna, tryb hasła głównego (błędne/poprawne, „nie pamiętam”) | `packages/shell/test/context-unlock.test.ts` | symulowany Electron, prawdziwe katalogi tymczasowe |
+| Kreator pierwszego uruchomienia: tryb DPAPI i tryb hasła głównego, odrzucenie słabego hasła | `packages/shell/test/context-unlock.test.ts` | |
+| Magazyn sekretów: Credential Manager (zapis/odczyt/brak wpisu) | `packages/core/test/credman.test.ts`, test ręczny | sekrety nie trafiają do wiersza poleceń ani logów |
 | Polskie znaki i spacje w ścieżce | `packages/core/test/helpers.ts` (`tmpDir`) – wszystkie testy plikowe | |
 | Ponowne uruchomienie komputera | test ręczny (auto-start, stan profili, kwarantanna klucza) | |
 | Odinstalowanie | `tools/ci/installer-e2e.ps1`, test ręczny | dane użytkownika zostają |
