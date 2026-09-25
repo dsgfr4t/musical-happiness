@@ -40,5 +40,5 @@ Komunikaty są celowo ostrożne: „Nie wykryto typowych problemów” nie oznac
 
 * **WebRTC** – zbierani są tylko kandydaci lokalni (bez serwera STUN), więc test nie ujawnia adresu publicznego przez STUN;
 * **Wykrywanie rozszerzeń** – niezaimplementowane celowo (sondowanie zasobów rozszerzeń jest techniką fingerprintingu);
-* **Inna przeglądarka** – audyt nie może ocenić izolacji profili, ciasteczek innych profili ani piaskownicy tej przeglądarki (wynik „nie można określić”);
+* **Inna przeglądarka** – audyt mierzy jej odcisk (UA, ekran, canvas/WebGL/audio, czcionki, WebRTC, ciasteczka własnej domeny), ale nie może ocenić izolacji profili, polityki ciasteczek osób trzecich ani piaskownicy tej przeglądarki (wynik „nie można określić”);
 * wynik jest migawką z chwili testu, nie certyfikatem.

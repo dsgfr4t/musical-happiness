@@ -24,9 +24,9 @@ Stan weryfikacji: kod przechodzi `tsc` i 130 testów vitest, oba bundle budują 
 | 6 | AppContainer | 🟡 | tylko piaskownica rendererów Chromium; brak pełnego AppContainer dla aplikacji |
 | 7 | Presety Standard / Ścisły / Tor, bez losowania | ✅ | Tor = oficjalny Tor Browser |
 | 8 | Raport OctoDetect z poziomami ryzyka | ✅ | niskie / średnie / wysokie / nie można określić |
-| 8 | Test WebRTC | 🟡 | tylko kandydaci lokalni (bez STUN) |
+| 8 | Test WebRTC | 🟡 | bez własnego serwera STUN; Standard = tylko interfejs publiczny, Ścisły/Tor = brak nieproxyowanego UDP |
 | 8 | Wykrywanie rozszerzeń | ⛔ | technika fingerprintingu |
-| 8 | Audyt zewnętrznej przeglądarki | 🟡 | bez oceny izolacji, ciasteczek i piaskownicy |
+| 8 | Audyt zewnętrznej przeglądarki | 🟡 | odcisk mierzony w dowolnej przeglądarce; bez oceny izolacji profili, polityki ciasteczek osób trzecich i piaskownicy tej przeglądarki |
 | 9 | Panel ruchu i sieci | ✅ | VPN wykrywany heurystycznie |
 | 10 | Mikser dźwięku | 🟡 | głośność/wyciszanie kart i profilu, urządzenie wyjściowe; **brak korektora**; obejmuje karty bieżącego profilu |
 | 11 | Wielozadaniowość (widok podzielony, PiP, grupy, usypianie, wyszukiwanie kart, sesje) | ✅ | wyskakujące okna otwierane jako karty bez `window.opener` |
