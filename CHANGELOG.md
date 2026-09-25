@@ -18,6 +18,22 @@
 - **New documentation**: `docs/encryption.md`, `docs/threat-model.md`, `docs/known-limitations.md`, `docs/testing.md`, `docs/release-checklist.md`.
 - Tests: +15 cases (master password, Credential Manager, secret router) - 130 in total.
 
+**PL – poprawki interfejsu**
+- **Naprawione niewidoczne etykiety**: przyciski „Uruchom”, „Nowy profil” i inne klasy `btn primary` miały biały tekst na białym tle (tekst i ikona były niewidoczne), tak samo aktywny przycisk poziomu ochrony (`seg button.on`) i numer aktywnego kroku w kreatorze. Teraz tekst na białym tle jest czarny.
+- **Karty profili**: pod nazwą profilu nie powtarza się już jego typ („Personal / Personal”, „Work / Work”…) – zamiast tego krótki opis roli profilu (`profile.kindTag.*`).
+- **Proxy systemowe**: etykieta trybu sieci brzmi teraz „Proxy systemowe” / „System proxy” zamiast „Ustawienia systemowe”, które wyglądało jak odsyłacz do ustawień.
+- **Monochromatyczny interfejs**: usunięte pozostałości barw (zielony/amber/różowy) z OctoDetect i OctoBrowser; stan zawsze opisują ikona, waga tekstu i podpis.
+- **Nowy test UI** (`packages/shell/test/ui-contrast.test.ts`): sprawdza kontrast każdej reguły `background` + `color` (≥ 3:1) i zakazuje barw w arkuszach stylów – regresja „białe na białym” nie przejdzie już przez `npm test`.
+- Testy: +3 przypadki – łącznie 133.
+
+**EN – UI fixes**
+- **Invisible labels fixed**: `.btn primary` buttons ("Launch", "New profile", …) had white text on a white background - label and icon were invisible; the same applied to the active protection-level segment and to the active step number in the first-run wizard. Text on white is now black.
+- **Profile cards**: the profile type no longer repeats the profile name ("Personal / Personal", "Work / Work" …); a short role description (`profile.kindTag.*`) is shown instead.
+- **System proxy**: the network mode now reads "System proxy" / "Proxy systemowe" instead of "System settings", which looked like a link to the settings page.
+- **Monochrome UI**: leftover hues (green/amber/rose) removed from OctoDetect and OctoBrowser; state is always carried by icon, weight and a text label.
+- **New UI test** (`packages/shell/test/ui-contrast.test.ts`): checks the contrast of every `background` + `color` rule (>= 3:1) and forbids hues in the stylesheets, so "white on white" cannot regress through `npm test` again.
+- Tests: +3 cases - 133 in total.
+
 ## 0.1.0 – wersja wstępna (niewydana)
 
 **PL**

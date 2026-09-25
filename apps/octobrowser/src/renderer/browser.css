@@ -34,7 +34,7 @@ body.vertical #tabstrip #tabs { display: none; }
 .tab .fav { width: 16px; height: 16px; display: grid; place-items: center; flex: none; }
 .tab .fav img { width: 16px; height: 16px; }
 .tab .title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tab .group { font-size: 10px; padding: 1px 6px; border-radius: 6px; background: var(--panel2); color: #d9d0ff; }
+.tab .group { font-size: 10px; padding: 1px 6px; border-radius: 6px; background: var(--panel2); color: var(--text); }
 .tab .close { opacity: 0; } .tab:hover .close, .tab.active .close { opacity: 1; }
 .spinner { width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -71,7 +71,7 @@ body.vertical #tabstrip #tabs { display: none; }
 .btn { border: 1px solid var(--line); background: var(--panel); padding: 6px 12px; border-radius: 8px; }
 .btn:hover { border-color: var(--accent); }
 .btn.small { padding: 4px 10px; font-size: 12px; }
-.btn.primary { background: #fff; border: 0; color: #fff; font-weight: 600; }
+.btn.primary { background: #fff; border: 0; color: #000; font-weight: 600; }
 .btn.danger { border-color: var(--panel2); color: var(--text); }
 .btn.ghost { background: transparent; }
 
@@ -104,11 +104,11 @@ body.vertical #tabstrip #tabs { display: none; }
 .row input[type=range] { flex: 1; accent-color: var(--accent); }
 .check { display: inline-flex; align-items: center; gap: 4px; }
 .hero { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 12px; border: 1px solid var(--line); }
-.hero.ok { background: var(--panel2); color: #bbf7d0; }
+.hero.ok { background: var(--panel2); color: var(--text); }
 .hero.warn { background: var(--panel2); color: var(--text); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .seg button { border: 0; background: transparent; padding: 6px 14px; }
-.seg button.on { background: var(--accent); color: #fff; }
+.seg button.on { background: var(--accent); color: #000; }
 .seg button:disabled { opacity: .5; }
 .issues { margin: 0; padding-left: 18px; } .issues li.warn { color: var(--text); }
 .note { background: var(--panel2); border: 1px solid var(--panel2); border-radius: 8px; padding: 8px 10px; color: var(--text); }

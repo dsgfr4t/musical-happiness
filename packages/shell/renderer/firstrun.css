@@ -7,7 +7,7 @@
 .steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
 .steps li span { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); font-size: 12px; }
 .steps li.active { color: var(--text); }
-.steps li.active span { background: var(--accent); border-color: var(--accent); color: #fff; }
+.steps li.active span { background: var(--accent); border-color: var(--accent); color: #000; }
 .steps li.done span { background: var(--panel2); border-color: var(--ok); }
 .version { margin-top: auto; font-size: 12px; }
 main { padding: 34px 38px 22px; display: flex; flex-direction: column; overflow: auto; }

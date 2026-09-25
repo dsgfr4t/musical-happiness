@@ -198,7 +198,7 @@ function profileCard(p: Profile): HTMLElement {
   more.onclick = () => profileActions(p);
 
   card.append(
-    h('div', { class: 'card-top' }, h('span', { class: 'avatar', text: p.name.slice(0, 1).toUpperCase() }), h('div', { class: 'grow' }, h('b', { text: p.name }), h('div', { class: 'muted small', text: t(`profile.kind.${p.kind}`) })), p.running ? h('span', { class: 'live', text: t('profile.running') }) : null),
+    h('div', { class: 'card-top' }, h('span', { class: 'avatar', text: p.name.slice(0, 1).toUpperCase() }), h('div', { class: 'grow' }, h('b', { text: p.name }), h('div', { class: 'muted small', text: t(`profile.kindTag.${p.kind}`) })), p.running ? h('span', { class: 'live', text: t('profile.running') }) : null),
     h('div', { class: 'chips' }, h('span', { class: 'chip', text: t(`level.${p.protection.level}`) }), h('span', { class: 'chip', text: t(`net.mode.${p.network.mode}`) })),
     icons,
   );

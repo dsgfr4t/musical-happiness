@@ -2,7 +2,7 @@
 
 Legenda: ✅ zaimplementowane · 🟡 częściowo / z ograniczeniami · ⏳ planowane · ⛔ celowo pominięte
 
-Stan weryfikacji: kod przechodzi `tsc` i 130 testów vitest, oba bundle budują się esbuild i ładują się w teście dymnym z atrapą Electrona. **Aplikacje nie zostały uruchomione w prawdziwym Electronie na Windows** w środowisku, w którym powstał ten kod (brak binarki Electron, PowerShell i Wine) – przed wydaniem wymagany jest test ręczny według checklisty w [updates-and-release.md](updates-and-release.md).
+Stan weryfikacji: kod przechodzi `tsc` i 133 testy vitest, oba bundle budują się esbuild i ładują się w teście dymnym z atrapą Electrona. **Aplikacje nie zostały uruchomione w prawdziwym Electronie na Windows** w środowisku, w którym powstał ten kod (brak binarki Electron, PowerShell i Wine) – przed wydaniem wymagany jest test ręczny według checklisty w [updates-and-release.md](updates-and-release.md).
 
 | # | Obszar | Stan | Uwagi |
 |---|---|---|---|
@@ -43,11 +43,11 @@ Stan weryfikacji: kod przechodzi `tsc` i 130 testów vitest, oba bundle budują 
 | 17 | UI OctoDetect z ekranem startowym (PL/EN) | ✅ | |
 | 17 | Ochrona klucza: DPAPI **albo** hasło główne | ✅ | wybór w kreatorze i w Ustawieniach; nieczytelny klucz jest kwarantannowany, nie blokuje startu |
 | — | Szyfrowanie i odzyskiwanie profilu 12-wyrazową frazą | ✅ | BIP-39 (`packages/core/src/mnemonic.ts`), fraza przy włączaniu szyfrowania, przy otwieraniu, eksporcie i imporcie profilu |
-| — | Interfejs czarno-biały, minimalistyczny, z ikonami | ✅ | wspólne tokeny w `packages/shell/renderer/shared.css`, brak barw znaczeniowych, odstępy `--gap`/`--gap-lg` |
+| — | Interfejs czarno-biały, minimalistyczny, z ikonami | ✅ | wspólne tokeny w `packages/shell/renderer/shared.css`, brak barw znaczeniowych, odstępy `--gap`/`--gap-lg`; test `ui-contrast.test.ts` pilnuje kontrastu i monochromatu |
 | — | Dokumentacja: model zagrożeń, znane ograniczenia, szyfrowanie, testy, checklista wydania | ✅ | `docs/threat-model.md`, `docs/known-limitations.md`, `docs/encryption.md`, `docs/testing.md`, `docs/release-checklist.md` |
 | 18 | Telemetria wyłączona, dokumentacja połączeń | ✅ | [privacy-and-network.md](privacy-and-network.md) |
 | 19 | Logi standardowe/diagnostyczne, „Usuń logi” | ✅ | |
-| 20 | Testy jednostkowe | ✅ | 18 plików, 130 testów ([testing.md](testing.md)) |
+| 20 | Testy jednostkowe | ✅ | 19 plików, 133 testy ([testing.md](testing.md)) |
 | 20 | Testy E2E (Playwright + Electron) | ✅ | `e2e\*.spec.ts`, uruchamiane w CI na `windows-latest` (job „windows”) |
 | 20 | Weryfikacja fuse’ów Electrona w paczce | ✅ | `tools/check-fuses.mjs` po `npm run dist:dir` w CI |
 | 21 | Struktura katalogów | ✅ | [architecture.md](architecture.md) |
