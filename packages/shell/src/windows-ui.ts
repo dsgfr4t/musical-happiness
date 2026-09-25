@@ -4,7 +4,7 @@
  * Small helper windows shared by both apps: splash screen and the first-run
  * wizard. Both are sandboxed, context-isolated and load local files only.
  */
-import { BrowserWindow, nativeTheme } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
 import * as path from 'node:path';
 import { trustWebContents } from './ipc';
 import type { AppId } from '@octo/core';
@@ -37,7 +37,7 @@ export function createUtilityWindow(distDir: string, appId: AppId, page: string,
       nodeIntegration: false,
       webviewTag: false,
       spellcheck: false,
-      devTools: !require('electron').app.isPackaged,
+      devTools: !app.isPackaged,
     },
   });
   trustWebContents(win.webContents);

@@ -58,10 +58,31 @@
       <!-- STEP 3: security & privacy -->
       <section class="step" id="step3" hidden>
         <h1 data-i18n="firstRun.security.title"></h1>
-        <div class="fact">
-          <svg class="ico" aria-hidden="true"><use href="#i-key"></use></svg>
-          <div><b data-i18n="firstRun.security.local"></b><div class="muted" data-i18n="firstRun.security.localDesc"></div></div>
+
+        <div class="choice">
+          <label class="option">
+            <input type="radio" name="keyMode" id="keyOs" value="os" checked>
+            <span><b data-i18n="firstRun.security.local"></b>
+              <span class="muted" data-i18n="firstRun.security.localDesc"></span></span>
+          </label>
+          <label class="option">
+            <input type="radio" name="keyMode" id="keyPassword" value="password">
+            <span><b data-i18n="firstRun.security.master"></b>
+              <span class="muted" data-i18n="firstRun.security.masterDesc"></span></span>
+          </label>
         </div>
+
+        <div id="masterBox" hidden>
+          <div class="row">
+            <input type="password" id="masterPw" spellcheck="false" autocomplete="new-password"
+                   data-i18n-placeholder="firstRun.security.masterPlaceholder">
+            <input type="password" id="masterPw2" spellcheck="false" autocomplete="new-password"
+                   data-i18n-placeholder="firstRun.security.masterRepeat">
+          </div>
+          <div class="err" id="masterErr"></div>
+          <div class="muted small" data-i18n="firstRun.security.masterHint"></div>
+        </div>
+
         <div class="fact">
           <svg class="ico" aria-hidden="true"><use href="#i-list"></use></svg>
           <div><b data-i18n="firstRun.security.profiles"></b><div class="muted" data-i18n="firstRun.security.profilesDesc"></div></div>

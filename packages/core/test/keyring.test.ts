@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { DecryptionError, Keyring, SecretStore } from '../src';
-import { fakeProtector, tmpDir } from './helpers';
+import { fakeProtector, tmpDir, FAST_KDF } from './helpers';
 
 describe('Keyring', () => {
   it('unlocks with no user interaction at all and survives a restart', async () => {
@@ -50,7 +50,7 @@ describe('Keyring', () => {
     expect(broken.getKey().equals(old)).toBe(false);    // with a brand new key
   });
 
-  it('a legacy master-password keyring cannot block the start', async () => {
+  it('a damaged password-mode keyring is quarantined, not a dead end', async () => {
     const dir = tmpDir();
     const f = path.join(dir, 'keyring.bin');
     fs.writeFileSync(f, Buffer.concat([
@@ -59,10 +59,15 @@ describe('Keyring', () => {
     ]));
     const k = new Keyring(f, fakeProtector());
     expect(k.mode()).toBe('password');
-    await expect(k.unlock()).rejects.toBeInstanceOf(DecryptionError);
+    await expect(k.unlock('cokolwiek')).rejects.toBeInstanceOf(DecryptionError);
     await k.resetToNewKey(path.join(dir, 'backups'));
     expect(k.mode()).toBe('os');
     expect(k.isUnlocked()).toBe(true);
+  });
+
+  it('refuses to create a keyring with a too-short master password', async () => {
+    const k = new Keyring(path.join(tmpDir(), 'k.bin'), fakeProtector(), FAST_KDF);
+    await expect(k.create({ password: 'kr0tkie' })).rejects.toThrow();
   });
 
   it('refuses to create a keyring when DPAPI is unavailable', async () => {

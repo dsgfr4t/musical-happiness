@@ -23,12 +23,15 @@ code { display: block; margin: 6px 0; word-break: break-all; color: var(--text);
 
 .tree { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
 .small { font-size: 12px; }
-.choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
-.choice:has(input:checked) { border-color: var(--accent); }
-.choice input { margin-top: 4px; }
-#pwdFields { display: grid; gap: 8px; }
-.meter { height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
-.meter i { display: block; height: 100%; width: 0; background: var(--bad); transition: width .2s, background .2s; }
+.choice { display: grid; gap: 10px; }
+.option { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.option:hover { border-color: var(--accent); }
+.option:has(input:checked) { border-color: var(--accent); box-shadow: 0 8px 24px #000; }
+.option input { margin-top: 4px; flex: none; }
+.option b { display: block; margin-bottom: 2px; }
+.option .muted { display: block; font-size: 12.5px; }
+#masterBox { display: grid; gap: 8px; }
+#masterBox .row input { flex: 1; }
 .check { display: flex; gap: 10px; align-items: center; }
 footer { display: flex; gap: 10px; align-items: center; padding-top: 14px; border-top: 1px solid var(--line); margin-top: 10px; }
 .spacer { flex: 1; }

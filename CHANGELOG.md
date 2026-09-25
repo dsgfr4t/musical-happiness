@@ -2,6 +2,24 @@
 
 ## 0.1.0 – wersja wstępna (niewydana)
 
+**PL – rozszerzenie ochrony klucza**
+- **Opcjonalne hasło główne**: kreator pierwszego uruchomienia (krok 3) pozwala wybrać ochronę klucza danymi konta Windows (DPAPI, bez hasła) albo hasłem głównym (Argon2id → AES-256-GCM). Hasło można później ustawić, zmienić lub usunąć w Ustawieniach → Bezpieczeństwo obu aplikacji; zmiana hasła nie zmienia klucza danych, więc wszystkie zaszyfrowane dane pozostają czytelne.
+- **Okno hasła głównego** (`packages/shell/src/unlock.ts`, `renderer/unlock.html`): ponowne odblokowanie przy starcie, po auto-blokadzie i po zablokowaniu ekranu; 3 nieudane próby = komunikat z możliwością rozpoczęcia z nowym kluczem; „Nie pamiętam hasła” przenosi stary klucz do `backups\unreadable-<data>` (nic nie jest usuwane); anulowanie kończy pracę aplikacji.
+- **Auto-blokada rozszerzona o klucz lokalny**: przy haśle głównym po czasie bezczynności blokowany jest także klucz danych (wcześniej tylko zaszyfrowane profile).
+- **Menedżer poświadczeń Windows** jako opcjonalne miejsce przechowywania sekretów (np. haseł proxy): `packages/core/src/credman.ts` (CredWriteW/CredReadW/CredDeleteW przez PowerShella, JSON na stdin/stdout – bez sekretów w wierszu poleceń), przełącznik w Ustawieniach → Bezpieczeństwo, `config\credman-index.json` przechowuje wyłącznie nazwy.
+- **Nowa dokumentacja**: `docs/encryption.md` (instrukcja szyfrowania), `docs/threat-model.md` (model zagrożeń), `docs/known-limitations.md`, `docs/testing.md` (mapa testów bezpieczeństwa), `docs/release-checklist.md` (checklista przed publikacją).
+- Testy: +15 przypadków (hasło główne, Menedżer poświadczeń, router sekretów) – łącznie 126.
+
+**EN – key protection extension**
+- **Optional master password**: the first-run wizard (step 3) now offers Windows-account (DPAPI, no password) or master-password protection (Argon2id → AES-256-GCM). It can be set, changed and removed later in Settings → Security of either app; changing it re-wraps the same data key, so all encrypted data stays readable.
+- **Master-password window** (`packages/shell/src/unlock.ts`, `renderer/unlock.html`): re-unlock on start, after auto-lock and after the screen locks; 3 wrong attempts offer starting with a new key; "I do not remember the password" quarantines the old key in `backups\unreadable-<date>` (nothing is deleted); cancelling quits the app.
+- **Auto-lock extended to the local key**: with a master password the data key is locked after the idle time as well (previously only encrypted profiles).
+- **Windows Credential Manager** as an optional secret store (e.g. proxy passwords): `packages/core/src/credman.ts` (CredWriteW/CredReadW/CredDeleteW via PowerShell, JSON on stdin/stdout - no secrets on a command line), switch in Settings → Security, `config\credman-index.json` holds names only.
+- **New documentation**: `docs/encryption.md`, `docs/threat-model.md`, `docs/known-limitations.md`, `docs/testing.md`, `docs/release-checklist.md`.
+- Tests: +15 cases (master password, Credential Manager, secret router) - 126 in total.
+
+## 0.1.0 – wersja wstępna (niewydana)
+
 **PL**
 - Pierwsza wersja OctoBrowser.su i OctoDetect.su dla Windows 10/11.
 - Profile (osobisty, praca, prywatny, testowy, tymczasowy, Tor, własny) w osobnych procesach, szyfrowanie AES-256-GCM, klucz lokalny chroniony DPAPI.

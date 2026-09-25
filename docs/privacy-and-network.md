@@ -17,12 +17,16 @@
 | Wyszukiwanie | gdy wyszukujesz z paska adresu | `duckduckgo.com` | wpisane zapytanie (nic podczas pisania – brak podpowiedzi sieciowych) |
 | Strony | gdy je otwierasz | bezpośrednio lub przez Twoje proxy | to, co wysyła każda przeglądarka |
 | Serwer testowy OctoDetect | podczas audytu | `127.0.0.1` (lokalnie) | nic nie wychodzi poza komputer |
+| Menedżer poświadczeń Windows | tylko gdy włączysz ten magazyn sekretów | `powershell.exe` → `advapi32.dll` (lokalnie) | nazwa i wartość poświadczenia; **żadne połączenie sieciowe** |
+| Kreator / okno hasła głównego | przy pierwszym uruchomieniu i przy starcie w trybie hasła głównego | brak (plik lokalny) | hasło nigdy nie opuszcza komputera i nie jest wysyłane |
 
 Tryb offline (Ustawienia) blokuje wszystkie żądania sieciowe.
 
 ## Co jest przechowywane lokalnie
 
-* ustawienia i lista profili (bez sekretów), sekrety zaszyfrowane;
+* ustawienia i lista profili (bez sekretów), sekrety zaszyfrowane (plik lub Menedżer poświadczeń Windows);
+* `keyring.bin` – wyłącznie opakowany klucz danych (DPAPI lub hasło główne); hasło nie jest zapisywane;
+* `credman-index.json` – wyłącznie nazwy poświadczeń, bez wartości;
 * dane stron per profil (jak w każdej przeglądarce) – szyfrowane w spoczynku, jeśli włączono;
 * zakładki (zaszyfrowane);
 * historia – **domyślnie wyłączona**; gdy włączona, tylko tytuły i adresy, nigdy treść stron;

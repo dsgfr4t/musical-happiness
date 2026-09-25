@@ -34,6 +34,8 @@ function render(): void {
   $('back').style.visibility = step > 1 ? 'visible' : 'hidden';
   $('next').textContent = step === 3 ? t('firstRun.finish') : t('common.next');
   ($('next') as HTMLButtonElement).disabled = busy || (step === 1 && !lang) || (step === 2 && !validation?.ok);
+  $('masterBox').hidden = keyProtection() !== 'password';
+  $('masterErr').textContent = '';
   document.querySelectorAll<HTMLButtonElement>('.lang').forEach((b) => b.classList.toggle('selected', b.dataset.lang === lang));
 
 }
@@ -47,18 +49,34 @@ async function validateFolder(): Promise<void> {
   render();
 }
 
+/** Which key protection the user picked in step 3. */
+function keyProtection(): 'os' | 'password' {
+  return ($('keyPassword') as HTMLInputElement).checked ? 'password' : 'os';
+}
+
+/** Validate the master password pair (only used in "password" mode). */
+function checkMasterPassword(): string | null {
+  const a = ($('masterPw') as HTMLInputElement).value;
+  const b = ($('masterPw2') as HTMLInputElement).value;
+  if (a.length < 10) return t('firstRun.err.weakPassword');
+  if (a !== b) return t('firstRun.err.passwordMismatch');
+  return null;
+}
+
 async function finish(): Promise<void> {
-  // Nothing to ask here any more: the local key is created automatically and
-  // the only passphrase in the product belongs to an encrypted profile.
   busy = true;
   render();
   $('globalErr').textContent = t('firstRun.saving');
+  const mode = keyProtection();
+  const masterPassword = mode === 'password' ? ($('masterPw') as HTMLInputElement).value : undefined;
   try {
     await invoke('setup:finish', {
       language: lang,
       baseDir: ($('baseDir') as HTMLInputElement).value.trim(),
       publicIpLookup: ($('ipConsent') as HTMLInputElement).checked,
       autoUpdate: ($('autoUpdate') as HTMLInputElement).checked,
+      keyProtection: mode,
+      masterPassword,
     });
     $('globalErr').textContent = t('firstRun.restarting');
   } catch (err) {
@@ -104,13 +122,26 @@ async function main(): Promise<void> {
     window.clearTimeout(timer);
     timer = window.setTimeout(() => void validateFolder(), 300);
   });
+  for (const el of document.querySelectorAll<HTMLInputElement>('input[name=keyMode]')) {
+    el.addEventListener('change', () => {
+      $('masterBox').hidden = keyProtection() !== 'password';
+      if (keyProtection() === 'password') ($('masterPw') as HTMLInputElement).focus();
+      render();
+    });
+  }
   $('back').addEventListener('click', () => { if (step > 1 && !busy) { step--; $('globalErr').textContent = ''; render(); } });
   $('cancel').addEventListener('click', () => void invoke('setup:quit'));
   $('next').addEventListener('click', async () => {
     $('globalErr').textContent = '';
     if (step === 1 && lang) { step = 2; await validateFolder(); return; }
     if (step === 2 && validation?.ok) { step = 3; render(); return; }
-    if (step === 3) await finish();
+    if (step === 3) {
+      if (keyProtection() === 'password') {
+        const problem = checkMasterPassword();
+        if (problem) { $('masterErr').textContent = problem; return; }
+      }
+      await finish();
+    }
   });
   render();
 }

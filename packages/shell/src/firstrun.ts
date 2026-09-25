@@ -5,10 +5,10 @@
  *   1. Language: English / Polski
  *   2. Data folder: where EVERYTHING is saved locally (profiles, settings,
  *      logs, backups, downloads). Default: Documents\OctoSuite.
- *   3. Security: consents (public IP check, automatic updates). Local data is
- *      always protected with a key bound to this Windows account (DPAPI) - there
- *      is no master password to choose or to lose.
- *      + privacy choices (public-IP lookup consent, automatic update checks).
+ *   3. Security: HOW the local key is protected - either bound to this Windows
+ *      account (DPAPI, nothing to type) or wrapped with an optional MASTER
+ *      PASSWORD (Argon2id + AES-256-GCM) - plus privacy choices (public-IP
+ *      lookup consent, automatic update checks).
  * The wizard pre-fills language and folder from the sibling app if it was
  * already configured, but the user always confirms.
  *
@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   APPS, BootstrapStore, DICTS, DataLayout, Keyring, Lang, Logger, createSettingsStore, guessLang,
-  isLang, suggestBaseDir, validateBaseDir, SUITE_VERSION,
+  isAcceptablePassword, isLang, suggestBaseDir, validateBaseDir, SUITE_VERSION,
 } from '@octo/core';
 import { handle } from './ipc';
 import { dpapiProtector } from './osprotector';
@@ -31,6 +31,10 @@ export interface FirstRunChoice {
   baseDir: string;
   publicIpLookup: boolean;
   autoUpdate: boolean;
+  /** 'os' = DPAPI key (default), 'password' = wrap the key with a master password. */
+  keyProtection: 'os' | 'password';
+  /** Required (>= 10 chars) when keyProtection === 'password'. Never stored. */
+  masterPassword?: string;
 }
 
 /** Is there already a data folder from an earlier install we should reuse? */
@@ -84,16 +88,23 @@ export function runFirstRun(prep: PreparedApp, logger: Logger): Promise<boolean>
       const layout = new DataLayout(dataDir);
       layout.ensure(info.id === 'octodetect' ? ['reports'] : ['downloads']);
 
-      // Local key: bound to this Windows account (DPAPI), created automatically.
-      // There is no master password anywhere in OctoSuite - the only phrase a user
-      // ever types is the 12-word passphrase of an encrypted PROFILE.
-      // An existing key from an earlier install is reused; an unreadable one is
-      // repaired on the next start (see context.ts, recoverKeyring).
+      // Local key, in one of two modes:
+      //   'os'       - wrapped with Windows DPAPI, opens automatically (default);
+      //   'password' - wrapped with the master password typed above (Argon2id).
+      // The password is used once here and then dropped: only the wrapped key is
+      // written to disk. An existing key from an earlier install is reused; an
+      // unreadable one is repaired on the next start (see keyring-recovery.ts).
       const keyring = new Keyring(path.join(layout.config, 'keyring.bin'), dpapiProtector);
       if (!keyring.exists()) {
-        if (!dpapiProtector.available()) throw new Error('firstRun.err.noDpapi');
-        await keyring.create();
+        if (choice.keyProtection === 'password') {
+          if (!isAcceptablePassword(choice.masterPassword ?? '')) throw new Error('firstRun.err.weakPassword');
+          await keyring.create({ password: String(choice.masterPassword) });
+        } else {
+          if (!dpapiProtector.available()) throw new Error('firstRun.err.noDpapi');
+          await keyring.create();
+        }
         keyring.lock();
+        logger.info('keyring.created', { mode: choice.keyProtection === 'password' ? 'password' : 'os' });
       }
 
       const settings = createSettingsStore(layout);

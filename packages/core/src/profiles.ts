@@ -27,7 +27,7 @@ import {
   wipe,
 } from './crypto';
 import { generateMnemonic, isValidMnemonic, normalizeMnemonic } from './mnemonic';
-import type { SecretStore } from './secretstore';
+import type { SecretStoreApi } from './secretstore';
 
 export const PROFILE_KINDS = ['personal', 'work', 'private', 'testing', 'temporary', 'tor', 'custom'] as const;
 export type ProfileKind = (typeof PROFILE_KINDS)[number];
@@ -222,7 +222,7 @@ export class ProfileManager {
 
   constructor(
     private readonly layout: DataLayout,
-    private readonly secrets?: SecretStore,
+    private readonly secrets?: SecretStoreApi,
     private readonly kdf: KdfParams = DEFAULT_KDF,
   ) {
     this.store = new VersionedStore<ProfilesDoc>(path.join(layout.config, 'profiles.json'), {

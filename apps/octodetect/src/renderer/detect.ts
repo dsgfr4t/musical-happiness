@@ -11,6 +11,7 @@
 import { api, clear } from '@octo/shell/renderer/bridge';
 import { applyI18n, h, setDicts, setLang, t, Dicts } from '@octo/shell/renderer/i18n-client';
 import { icon } from '@octo/shell/renderer/icons';
+import { keyProtectionPanel } from '@octo/shell/renderer/keypanel';
 
 type Target = 'baseline' | 'standard' | 'strict' | 'external';
 type Risk = 'low' | 'medium' | 'high' | 'unknown';
@@ -23,7 +24,8 @@ interface ReportMeta { id: string; target: Target; generatedAt: string; risk: Ri
 interface UpdateStatus { configured: boolean; current: string; latest: string | null; available: boolean; severity?: string; changelog?: { en: string; pl: string }; lastCheckAt?: string; error?: string; downloading?: { done: number; total: number }; readyToInstall?: string; rollbackAvailable: string[] }
 interface Init {
   lang: 'en' | 'pl'; dicts: Dicts; version: string; dataDir: string; update: UpdateStatus; logMode: 'standard' | 'diagnostic';
-  settings: { network: { publicIpLookup: boolean }; offline: boolean; updates: { autoCheck: boolean; backgroundCheck: boolean }; security: { autoLockMinutes: number } };
+  settings: { network: { publicIpLookup: boolean }; offline: boolean; updates: { autoCheck: boolean; backgroundCheck: boolean }; security: { autoLockMinutes: number; secretStore: 'local' | 'credman' } };
+  keyringMode: 'os' | 'password' | null; keyringRequiresPassword: boolean; secretBackend: 'local' | 'credman'; credmanAvailable: boolean;
 }
 type View = 'audit' | 'reports' | 'updates' | 'settings' | 'logs' | 'about';
 
@@ -280,21 +282,60 @@ function renderSettings(v: HTMLElement): void {
       toggle(s.network.publicIpLookup, 'settings.ipLookup', (val) => void saveSettings({ publicIpLookup: val })),
       h('p', { class: 'hint', text: t('firstRun.ipLookupDesc') }),
       toggle(s.offline, 'settings.offline', (val) => void saveSettings({ offline: val }))),
+    h('section', { class: 'panel' }, h('h2', {}, icon('lock', 16), ` ${t('sec.autolock')}`),
+      h('label', { class: 'field' }, h('span', { class: 'lbl', text: t('sec.autolockAfter') }), autoLockSelect()),
+      h('p', { class: 'hint', text: t('sec.autolockHint') }),
+      init.keyringRequiresPassword ? null : h('p', { class: 'hint', text: t('od.autolockOsMode') })),
     renderKeyProtection(),
   );
 }
 
 /**
- * Key protection panel. There is nothing to configure: the local key is bound
- * to this Windows account (DPAPI) and unlocked automatically, and OctoSuite has
- * no master password at all.
+ * Key protection panel: shows how the local key that encrypts reports and
+ * settings is protected (Windows DPAPI or an optional master password), lets the
+ * user set / change / remove that password and choose where secrets are stored.
  */
 function renderKeyProtection(): HTMLElement {
-  return h('section', { class: 'panel' },
-    h('h2', {}, icon('key', 16), ` ${t('sec.keyring')}`),
-    h('p', { text: t('keyring.localDesc') }),
-    h('p', { class: 'hint', text: t('sec.encryptionDesc') }),
-    h('p', { class: 'note', text: t('security.malwareNotice') }));
+  const panel = keyProtectionPanel(
+    {
+      keyringMode: init.keyringMode,
+      requiresPassword: init.keyringRequiresPassword,
+      secretBackend: init.secretBackend,
+      credmanAvailable: init.credmanAvailable,
+    },
+    {
+      setMasterPassword: (current, next, repeat) => api.invoke('od:master-password', 'set', current, next, repeat),
+      removeMasterPassword: (current) => api.invoke('od:master-password', 'remove', current),
+      saveSettings: (patch) => saveSettings(patch),
+    },
+    () => { void refreshInit(); },
+  );
+  return panel;
+}
+
+/** Auto-lock selector (0 = never). */
+function autoLockSelect(): HTMLSelectElement {
+  const sel = h('select', {});
+  for (const [val, label] of [['0', t('sec.never')], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['30', '30 min'], ['60', '60 min']] as Array<[string, string]>) {
+    const o = h('option', { value: val, text: label });
+    if (Number(val) === init.settings.security.autoLockMinutes) o.selected = true;
+    sel.append(o);
+  }
+  sel.onchange = () => void saveSettings({ autoLockMinutes: Number(sel.value) });
+  return sel;
+}
+
+/** Re-read od:init so the panel reflects the new key protection state. */
+async function refreshInit(): Promise<void> {
+  const next = await api.invoke<Init>('od:init');
+  if (next) {
+    init.keyringMode = next.keyringMode;
+    init.keyringRequiresPassword = next.keyringRequiresPassword;
+    init.secretBackend = next.secretBackend;
+    init.credmanAvailable = next.credmanAvailable;
+    init.settings = next.settings;
+    render();
+  }
 }
 
 function renderLogs(v: HTMLElement): void {

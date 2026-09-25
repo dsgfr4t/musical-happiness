@@ -32,6 +32,12 @@ export interface AppSettings {
   security: {
     /** Lock encrypted profiles and the master-password keyring after N minutes idle (0 = never). */
     autoLockMinutes: number;
+    /**
+     * Where small secrets (proxy credentials) are kept:
+     *  'local'    - config/secrets.bin, encrypted with the local key (default);
+     *  'credman'  - Windows Credential Manager (per Windows user, not in backups).
+     */
+    secretStore: 'local' | 'credman';
   };
   logs: { mode: LogMode };
   ui: {
@@ -53,7 +59,7 @@ export function defaultSettings(): AppSettings {
     schema: 1,
     updates: { ...DEFAULT_UPDATE_SETTINGS },
     network: { publicIpLookup: false, autoRefresh: false, dns: { mode: 'system', provider: 'quad9', customTemplate: '' } },
-    security: { autoLockMinutes: 15 },
+    security: { autoLockMinutes: 15, secretStore: 'local' },
     logs: { mode: 'standard' },
     ui: { verticalTabs: false, sleepTabsAfterMin: 30, showStartupSplash: true },
     tor: { torBrowserPath: '' },
@@ -86,7 +92,10 @@ export function validateSettings(value: unknown): AppSettings {
       autoRefresh: !!(v.network?.autoRefresh ?? d.network.autoRefresh),
       dns,
     },
-    security: { autoLockMinutes: clampInt(v.security?.autoLockMinutes, 0, 24 * 60, d.security.autoLockMinutes) },
+    security: {
+      autoLockMinutes: clampInt(v.security?.autoLockMinutes, 0, 24 * 60, d.security.autoLockMinutes),
+      secretStore: v.security?.secretStore === 'credman' ? 'credman' : 'local',
+    },
     logs: { mode: v.logs?.mode === 'diagnostic' ? 'diagnostic' : 'standard' },
     ui: {
       verticalTabs: !!(v.ui?.verticalTabs ?? d.ui.verticalTabs),

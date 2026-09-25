@@ -110,11 +110,17 @@ Tryb: systemowy / bezpośredni / proxy (`http`, `https`, `socks4`, `socks5`), li
 
 ## 8. Bezpieczeństwo, kopie, logi
 
-* **Bezpieczeństwo**: informacja o lokalnym kluczu (konto Windows, bez hasła), auto-blokada zaszyfrowanych profili, listy filtrów;
+* **Bezpieczeństwo**:
+  * aktualna ochrona klucza – „Konto Windows (DPAPI) – bez hasła” albo „Hasło główne”;
+  * **Ustaw / zmień / usuń hasło główne** (minimum 10 znaków; zmiana hasła nie zmienia klucza, więc zaszyfrowane dane pozostają czytelne);
+  * **Gdzie przechowywać sekrety** – zaszyfrowany plik w folderze danych (domyślnie, jest w kopiach) albo Menedżer poświadczeń Windows (ten użytkownik, bez kopii);
+  * auto-blokada: po bezczynności zamykane są zaszyfrowane profile, a przy haśle głównym blokowany jest także lokalny klucz (aplikacja pyta o hasło ponownie);
+  * listy filtrów i data ich ostatniej aktualizacji;
+  * szczegóły: [encryption.md](encryption.md);
 * **Kopie zapasowe**: tworzone automatycznie przed każdą zmianą konfiguracji; przywracanie jednym kliknięciem;
 * **Logi**: tryb standardowy/diagnostyczny, „Otwórz folder logów”, **„Usuń logi”**;
 * **O programie**: wersja, lista połączeń sieciowych, telemetria wyłączona, licencje.
 
 ## 9. Ograniczenia
 
-Patrz [feature-matrix.md](feature-matrix.md) – m.in. brak korektora dźwięku, brak obsługi zewnętrznych rozszerzeń WebExtensions (funkcje wbudowane), okna wyskakujące otwierane jako karty bez `window.opener`.
+Patrz [feature-matrix.md](feature-matrix.md) – m.in. brak korektora dźwięku, brak obsługi zewnętrznych rozszerzeń WebExtensions (funkcje wbudowane), okna wyskakujące otwierane jako karty bez `window.opener`. Pełna, uczciwa lista: [known-limitations.md](known-limitations.md).

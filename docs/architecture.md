@@ -10,8 +10,8 @@
 │  renderer: browser/launcher  │   │  renderer: detect, probe     │
 └──────────────┬───────────────┘   └──────────────┬───────────────┘
                │  packages/shell (wspólny kod Electron)             
-               │  kreator, odblokowanie, hardening, IPC, sesje,     
-               │  adblock, update-manager, okna, CLI verify         
+               │  kreator, odblokowanie (hasło główne), hardening,  
+               │  IPC, sesje, adblock, update-manager, okna, CLI verify 
                └────────────────────┬───────────────────────────────
                         packages/core (czysty Node, testowany vitest)
                         crypto, keyring, secretstore, config (VersionedStore),
@@ -20,6 +20,9 @@
 ```
 
 * `packages/core` nie importuje Electrona – całą logikę bezpieczeństwa da się testować jednostkowo.
+* `packages/shell/src/keyring-recovery.ts` – wspólna ścieżka odzyskiwania klucza (kwarantanna + nowy klucz), używana przy starcie i w oknie hasła głównego.
+* `packages/shell/src/unlock.ts` + `renderer/unlock.html` – okno hasła głównego (retry, „nie pamiętam hasła”, anulowanie = koniec pracy aplikacji).
+* `packages/core/src/credman.ts` – opcjonalny magazyn sekretów w Menedżerze poświadczeń Windows (JSON na stdin/stdout do PowerShella, bez argumentów wiersza poleceń).
 * Kod jest bundlowany przez esbuild (`tools/build.mjs`) do `apps/<app>/dist`; w paczce nie ma `node_modules`.
 * Wersja pakietu jest jedna (root `package.json`), wstrzykiwana jako `__OCTO_VERSION__`.
 
@@ -60,7 +63,9 @@ Folder bazowy wybierany przy pierwszym uruchomieniu (domyślnie `Dokumenty\OctoS
 ```
 <baza>\OctoBrowser\
   config\        settings.json, profiles.json (koperta z SHA-256, kopia przed każdą zmianą),
-                 keyring.bin (DEK tylko w postaci opakowanej), secrets.bin (zaszyfrowane sekrety, np. hasła proxy)
+                 keyring.bin (DEK tylko w postaci opakowanej: DPAPI albo hasło główne),
+                 secrets.bin (zaszyfrowane sekrety, np. hasła proxy),
+                 credman-index.json (tylko NAZWY poświadczeń w Menedżerze poświadczeń Windows)
   profiles\<id>\ engine\ (dane Chromium), engine.vault, bookmarks.enc, history.enc, session.enc, downloads\
   engine\  downloads\  backups\  updater\  logs\  temp\  filters\
 <baza>\OctoDetect\
@@ -70,6 +75,22 @@ Folder bazowy wybierany przy pierwszym uruchomieniu (domyślnie `Dokumenty\OctoS
 ```
 
 Tryb przenośny: plik `portable.flag` obok `.exe` → `bootstrap.json` zapisywany obok programu.
+
+## Sekwencja startu (po pierwszym uruchomieniu)
+
+```
+main.ts -> prepareApp (ścieżki, switche Chromium) -> app.whenReady
+  -> startApp (packages/shell/src/context.ts)
+       odmowa pracy jako administrator
+       logger -> settings (VersionedStore, kopia przed zmianą)
+       keyring:
+         brak pliku          -> utworzenie (DPAPI)
+         --reset-keyring     -> recoverKeyring (kwarantanna + nowy klucz)
+         mode 'os'           -> automatyczne odblokowanie DPAPI
+         mode 'password'     -> okno hasła głównego (unlock.ts)
+       secrets -> SecretRouter (secrets.bin albo Menedżer poświadczeń Windows)
+  -> hardenApp -> okno aplikacji
+```
 
 ## Instalacja
 

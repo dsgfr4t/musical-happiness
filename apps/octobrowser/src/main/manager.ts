@@ -26,6 +26,7 @@ import type { Duplex } from 'node:stream';
 import { AppContext } from '@octo/shell/context';
 import { handle, trustWebContents } from '@octo/shell/ipc';
 import { UpdateManager } from '@octo/shell/update-manager';
+import { runMasterPasswordUnlock } from '@octo/shell/unlock';
 import { iconPath, THEME } from '@octo/shell/windows-ui';
 import { findTorBrowser, launchDetached, launchWindowsSandbox, windowsSandboxAvailable } from '@octo/shell/winutil';
 
@@ -372,13 +373,16 @@ export class Manager {
   /**
    * Lock: close every encrypted profile. Their vaults are sealed when the
    * process exits and the cached vault keys are wiped, so opening them again
-   * asks for the 12-word passphrase. Nothing else in the app is password
-   * protected, so unencrypted profiles keep running.
+   * asks for the 12-word passphrase.
+   *
+   * When the data folder is protected with a MASTER PASSWORD the local key is
+   * locked as well and the password is asked for again before the app can be
+   * used. Cancelling that window quits the application rather than continuing
+   * with a locked key.
    */
   async lockAll(reason: 'autolock' | 'manual'): Promise<void> {
     if (this.locking) return;
     const targets = [...this.children.keys()].filter((id) => this.profiles.get(id).encrypted);
-    if (!targets.length) return;
     this.locking = true;
     this.ctx.logger.info('lock', { reason, profiles: targets.length });
     await Promise.all(targets.map((id) => new Promise<void>((resolve) => {
@@ -392,6 +396,28 @@ export class Manager {
     for (const [id, key] of this.vaultKeys) { wipe(key); this.vaultKeys.delete(id); }
     this.locking = false;
     this.pushProfiles();
+    await this.lockLocalKey(reason);
+  }
+
+  /**
+   * Lock the local key (only meaningful with a master password) and ask for it
+   * again. With a DPAPI key there is nothing to lock, so this is a no-op.
+   */
+  private async lockLocalKey(reason: 'autolock' | 'manual'): Promise<void> {
+    const keyring = this.ctx.keyring;
+    if (!keyring.requiresPassword()) return;
+    keyring.lock();
+    this.ctx.logger.info('keyring.locked', { reason });
+    const ok = await runMasterPasswordUnlock({
+      distDir: this.ctx.prep.distDir,
+      appId: 'octobrowser',
+      productName: this.ctx.prep.info.productName,
+      lang: this.ctx.lang,
+      layout: this.ctx.layout,
+      keyring,
+      logger: this.ctx.logger,
+    });
+    if (!ok) app.quit();
   }
 
   // --------------------------------------------------------------- filters
@@ -422,6 +448,9 @@ export class Manager {
       version: SUITE_VERSION,
       dataDir: ctx.layout.root,
       keyringMode: ctx.keyring.mode(),
+      keyringRequiresPassword: ctx.keyring.requiresPassword(),
+      secretBackend: ctx.secretBackend(),
+      credmanAvailable: ctx.credmanAvailable(),
       addons: ADDONS,
       kinds: PROFILE_KINDS,
       windowsSandbox: windowsSandboxAvailable(),
@@ -471,6 +500,21 @@ export class Manager {
     });
     handle('mgr:close-profile', L, (_e, id: string) => { this.children.get(id)?.channel.send({ t: 'quit', reason: 'user' }); return true; });
     handle('mgr:lock-all', L, async () => { await this.lockAll('manual'); return true; });
+    handle('mgr:master-password', L, async (_e, action: 'set' | 'remove', current: string, next: string, repeat: string) => {
+      const keyring = ctx.keyring;
+      if (action === 'set') {
+        if (typeof next !== 'string' || next.length < 10) throw new Error(this.t('firstRun.err.weakPassword'));
+        if (next !== repeat) throw new Error(this.t('firstRun.err.passwordMismatch'));
+        await keyring.setPassword(keyring.requiresPassword() ? String(current ?? '') : null, next);
+        L.info('keyring.password-set');
+      } else {
+        if (!keyring.requiresPassword()) return true;
+        await keyring.removePassword(String(current ?? ''));
+        L.info('keyring.password-removed');
+      }
+      this.pushProfiles();
+      return true;
+    });
     handle('mgr:set-encryption', L, async (_e, id: string, enable: boolean, passphrase?: string) => {
       if (this.children.has(id)) throw new Error(this.t('err.closeProfileFirst'));
       if (enable) {

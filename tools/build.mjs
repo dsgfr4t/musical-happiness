@@ -80,7 +80,7 @@ async function web(entry, outfile) {
 async function buildShared(dist) {
   const src = path.join(root, 'packages', 'shell', 'renderer');
   const out = path.join(dist, 'shared');
-  for (const page of ['firstrun', 'splash']) await web(path.join(src, `${page}.ts`), path.join(out, `${page}.js`));
+  for (const page of ['firstrun', 'splash', 'unlock']) await web(path.join(src, `${page}.ts`), path.join(out, `${page}.js`));
   copyByExt(src, out, ['.html', '.css']);
   await preload(path.join(root, 'packages', 'shell', 'src', 'preload-setup.ts'), path.join(dist, 'preload-setup.js'));
 }

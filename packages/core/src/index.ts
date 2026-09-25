@@ -11,6 +11,7 @@ export * from './paths';
 export * from './logger';
 export * from './config';
 export * from './keyring';
+export * from './credman';
 export * from './secretstore';
 export * from './privacy';
 export * from './archive';

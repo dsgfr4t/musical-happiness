@@ -45,7 +45,12 @@ Przy pierwszym uruchomieniu **każdej** aplikacji pojawia się jednorazowy kreat
 
 1. **Język** – English / Polski (pytanie pojawia się tylko raz; zmiana później w Ustawieniach),
 2. **Folder danych** – wybierasz, gdzie zapisywać wszystko (domyślnie `Dokumenty\OctoSuite`); dane są tylko lokalne,
-3. **Ochrona klucza** – konto Windows (DPAPI) lub hasło główne (Argon2id), zgody: sprawdzanie publicznego IP (domyślnie **wyłączone**), automatyczne aktualizacje.
+3. **Ochrona klucza** – klucz chroniony kontem Windows (DPAPI, bez hasła) **albo** opcjonalne hasło główne (Argon2id → AES-256-GCM); plus zgody: sprawdzanie publicznego IP (domyślnie **wyłączone**), automatyczne aktualizacje.
+
+Hasło główne jest opcjonalne i nigdzie nie jest zapisywane. Można je ustawić,
+zmienić lub usunąć później (Ustawienia → Bezpieczeństwo); zmiana hasła nie
+zmienia klucza danych, więc zaszyfrowane dane pozostają czytelne. Pełny opis:
+[docs/encryption.md](docs/encryption.md).
 
 ## Skrypty serwisowe (`scripts\`)
 
@@ -91,7 +96,12 @@ docs/                     dokumentacja
 | [docs/architecture.md](docs/architecture.md) | architektura, procesy, IPC, układ danych |
 | [docs/technology-choice.md](docs/technology-choice.md) | porównanie technologii i uzasadnienie wyboru |
 | [docs/components.md](docs/components.md) | weryfikacja komponentów open source |
-| [docs/security-model.md](docs/security-model.md) | szyfrowanie, model zagrożeń, granice ochrony |
+| [docs/security-model.md](docs/security-model.md) | szyfrowanie, auto-blokada, granice ochrony |
+| [docs/threat-model.md](docs/threat-model.md) | model zagrożeń: co chronimy, przed czym nie |
+| [docs/encryption.md](docs/encryption.md) | szyfrowanie: DPAPI, hasło główne, 12-wyrazowa fraza, kopie |
+| [docs/known-limitations.md](docs/known-limitations.md) | znane ograniczenia (uczciwa lista) |
+| [docs/testing.md](docs/testing.md) | testy bezpieczeństwa i mapa wymagań |
+| [docs/release-checklist.md](docs/release-checklist.md) | checklista przed publikacją wydania |
 | [docs/privacy-and-network.md](docs/privacy-and-network.md) | telemetria, wszystkie połączenia sieciowe, przechowywane dane |
 | [docs/updates-and-release.md](docs/updates-and-release.md) | aktualizacje, podpisy, wydanie, rollback, checklista |
 | [docs/scripts.md](docs/scripts.md) | skrypty .bat |
