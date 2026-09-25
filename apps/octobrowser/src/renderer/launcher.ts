@@ -9,6 +9,7 @@ import { api, clear } from '@octo/shell/renderer/bridge';
 import { applyI18n, h, setDicts, setLang, t, Dicts, getLang } from '@octo/shell/renderer/i18n-client';
 import { icon } from '@octo/shell/renderer/icons';
 import { phraseDisplay, phraseEntry } from '@octo/shell/renderer/phrase';
+import { keyProtectionPanel } from '@octo/shell/renderer/keypanel';
 
 // ------------------------------------------------------------------ types
 
@@ -33,12 +34,13 @@ interface UpdateStatus {
 interface Settings {
   updates: { autoCheck: boolean; backgroundCheck: boolean; channel: 'stable' | 'beta' };
   network: { publicIpLookup: boolean; autoRefresh: boolean; dns: { mode: 'system' | 'doh'; provider: string; customTemplate: string } };
-  security: { autoLockMinutes: number }; logs: { mode: 'standard' | 'diagnostic' };
+  security: { autoLockMinutes: number; secretStore: 'local' | 'credman' }; logs: { mode: 'standard' | 'diagnostic' };
   ui: { verticalTabs: boolean; sleepTabsAfterMin: number; showStartupSplash: boolean }; tor: { torBrowserPath: string }; offline: boolean;
 }
 interface Init {
   lang: 'en' | 'pl'; dicts: Dicts; version: string; dataDir: string; addons: AddonInfo[]; kinds: Kind[];
   windowsSandbox: boolean; torBrowser: boolean; settings: Settings; update: UpdateStatus; logMode: 'standard' | 'diagnostic'; filtersUpdatedAt: string | null;
+  keyringMode: 'os' | 'password' | null; keyringRequiresPassword: boolean; secretBackend: 'local' | 'credman'; credmanAvailable: boolean;
 }
 interface IsoItem { labelKey: string; value: string; state: 'allowed' | 'blocked' | 'limited' | 'info' }
 type View = 'profiles' | 'security' | 'updates' | 'settings' | 'logs' | 'about';
@@ -587,18 +589,42 @@ function renderSecurity(v: HTMLElement): void {
   v.append(h('div', { class: 'view-head' }, h('h1', { text: t('launcher.nav.security') })));
   const s = init.settings;
   const mins = select(String(s.security.autoLockMinutes), [['0', t('sec.never')], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['30', '30 min'], ['60', '60 min']], (val) => void saveSettings({ security: { autoLockMinutes: Number(val) } }));
-  const keyBox = h('div', { class: 'panel' },
-    h('h2', {}, icon('key', 16), ` ${t('sec.keyring')}`),
-    h('p', { text: t('keyring.localDesc') }));
+  const lockNow = h('button', { class: 'btn', text: t('sec.lockNow') });
+  lockNow.onclick = () => void run(api.invoke('mgr:lock-all')).then(() => render());
   v.append(
-    keyBox,
-    h('div', { class: 'panel' }, h('h2', {}, icon('lock', 16), ` ${t('sec.autolock')}`), field('sec.autolockAfter', mins, 'sec.autolockHint')),
+    keyProtectionPanel(
+      {
+        keyringMode: init.keyringMode,
+        requiresPassword: init.keyringRequiresPassword,
+        secretBackend: init.secretBackend,
+        credmanAvailable: init.credmanAvailable,
+      },
+      {
+        setMasterPassword: (current, next, repeat) => api.invoke('mgr:master-password', 'set', current, next, repeat),
+        removeMasterPassword: (current) => api.invoke('mgr:master-password', 'remove', current),
+        saveSettings: (patch) => saveSettings(patch),
+        confirm: (text, fn) => confirmDialog(text, fn, 'toast.saved'),
+      },
+      () => { void refreshInit(); },
+    ),
+    h('div', { class: 'panel' }, h('h2', {}, icon('lock', 16), ` ${t('sec.autolock')}`), field('sec.autolockAfter', mins, 'sec.autolockHint'), lockNow),
     h('div', { class: 'panel' },
       h('h2', {}, icon('shield', 16), ` ${t('sec.encryption')}`),
       h('p', { text: t('sec.encryptionDesc') }),
-      h('p', { class: 'hint', text: t('enc.noRecovery') }),
-      h('p', { class: 'note', text: t('security.malwareNotice') })),
+      h('p', { class: 'hint', text: t('enc.noRecovery') })),
   );
+}
+
+/** Re-read mgr:init so the security panel shows the current key protection state. */
+async function refreshInit(): Promise<void> {
+  const next = await api.invoke<Init>('mgr:init');
+  if (!next) return;
+  init.keyringMode = next.keyringMode;
+  init.keyringRequiresPassword = next.keyringRequiresPassword;
+  init.secretBackend = next.secretBackend;
+  init.credmanAvailable = next.credmanAvailable;
+  init.settings = next.settings;
+  render();
 }
 
 async function saveSettings(patch: Record<string, unknown>): Promise<void> {

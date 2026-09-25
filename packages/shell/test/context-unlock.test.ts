@@ -67,7 +67,16 @@ vi.mock('electron', () => {
   const listeners = new Map<string, Array<() => void>>();
   return {
     app: {
-      getPath: (name: string) => (name === 'documents' ? os.tmpdir() : path.join(os.tmpdir(), 'octo-appdata')),
+      // Distinct folders per name: "exe" must NOT be a parent of the temp data
+      // folders, otherwise the wizard would (correctly) refuse them.
+      getPath: (name: string) => ({
+        exe: path.join(path.sep, 'opt', 'octo-install', 'OctoBrowser', 'OctoBrowser.su.exe'),
+        appData: path.join(os.tmpdir(), 'octo-appdata'),
+        documents: os.tmpdir(),
+        userData: os.tmpdir(),
+        temp: os.tmpdir(),
+        crashDumps: os.tmpdir(),
+      }[name] ?? os.tmpdir()),
       getLocale: () => 'pl-PL',
       getVersion: () => '0.1.0',
       isPackaged: false,
@@ -151,6 +160,15 @@ function fakeProtector() {
 
 /** Fast KDF so the test does not spend seconds in Argon2id. */
 const FAST_KDF = { memoryKiB: 8 * 1024, iterations: 1, parallelism: 1 };
+
+/** Invoke a handler and return the raw {ok, value?, error?} envelope. */
+async function callRaw(channel: string, ...args: unknown[]): Promise<{ ok: boolean; value?: unknown; error?: string }> {
+  const h = handlers.get(channel);
+  if (!h) throw new Error(`no handler for ${channel}`);
+  const wc = createdWindows[createdWindows.length - 1];
+  const event = { sender: wc.webContents, senderFrame: { url: `file://${path.join(distDirForTest, 'shared', 'firstrun.html')}` } };
+  return (await h.fn(event, ...args)) as { ok: boolean; value?: unknown; error?: string };
+}
 
 /** Invoke a handler the way a trusted renderer would and unwrap {ok,value}. */
 async function call<T = unknown>(channel: string, ...args: unknown[]): Promise<T> {
@@ -259,5 +277,54 @@ describe('startApp with a stubbed Electron', () => {
     expect(fs.readdirSync(path.join(layout.backups, quarantined[0])).some((f) => f.startsWith('keyring.bin.unreadable-'))).toBe(true);
     ctx!.keyring.lock();
     dialogState.answer = 2;
+  });
+
+  it('the first-run wizard creates a master-password keyring (and refuses a weak one)', async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'octo-ctx-'));
+    const dataDir = path.join(base, 'OctoBrowser');
+    const distDir = path.join(base, 'dist');
+    fs.mkdirSync(path.join(distDir, 'shared'), { recursive: true });
+    distDirForTest = distDir;
+    setTrustedRoot(distDir);
+    // no bootstrap.json => first run
+    fs.rmSync(path.join(APPDATA, APPS.octobrowser.bootstrapDirName, 'bootstrap.json'), { force: true });
+
+    const pending = startApp(prepareApp('octobrowser', distDir));
+    await vi.waitFor(() => expect(handlers.has('setup:finish')).toBe(true));
+
+    const finish = (pw?: string) => callRaw('setup:finish', {
+      language: 'pl',
+      baseDir: base,
+      publicIpLookup: false,
+      autoUpdate: false,
+      keyProtection: pw ? 'password' : 'os',
+      masterPassword: pw,
+    });
+
+    const weak = await finish('krotkie');
+    expect(weak.ok).toBe(false); // the app refuses a weak master password
+    expect(String(weak.error)).toContain('firstRun.err.weakPassword');
+    expect(fs.existsSync(path.join(dataDir, 'config', 'keyring.bin'))).toBe(false); // nothing written yet
+
+    const strong = await finish(PW);
+    expect(strong.ok).toBe(true);
+    await expect(pending).resolves.toBeNull(); // startApp relaunches the app
+
+    const keyringFile = path.join(dataDir, 'config', 'keyring.bin');
+    expect(fs.existsSync(keyringFile)).toBe(true);
+    expect(fs.readFileSync(keyringFile, 'utf8')).not.toContain(PW); // never stored
+    expect(new Keyring(keyringFile, fakeProtector()).mode()).toBe('password');
+
+    // ...and the next start asks for exactly that password.
+    const second = startApp(prepareApp('octobrowser', distDir));
+    await vi.waitFor(() => expect(handlers.has('unlock:submit')).toBe(true));
+    expect(createdWindows.length).toBe(2); // first-run wizard window + master-password window
+    const wrong = await call<{ ok: boolean }>('unlock:submit', 'zupelnie-inne-haslo');
+    expect(wrong.ok).toBe(false);
+    const right = await call<{ ok: boolean }>('unlock:submit', PW);
+    expect(right.ok).toBe(true);
+    const ctx = await second;
+    expect(ctx!.keyring.isUnlocked()).toBe(true);
+    ctx!.keyring.lock();
   });
 });
